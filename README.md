@@ -6,6 +6,43 @@ Open **Daily Walls** from the application menu, or run:
 /usr/bin/python3 main.py --gui
 ```
 
+## Install a package
+
+Download the `.deb` or `.rpm` from [GitHub Releases](https://github.com/KhuramMurad/daily-walls/releases).
+
+Debian/Ubuntu (Python 3.10 or newer):
+
+```sh
+sudo apt install ./daily-walls_1.0.0_all.deb
+```
+
+Fedora (Python 3.10 or newer):
+
+```sh
+sudo dnf install ./daily-walls-1.0.0-1.noarch.rpm
+```
+
+Open **Daily Walls** from the application menu, or run `daily-walls --gui`.
+The packages install the system Python/GTK, Pillow, and WebP loader dependencies.
+Desktop-specific wallpaper tools (such as `swaybg`, `hyprpaper`, or `feh`) must
+be available for those desktops. GNOME and Cinnamon use their existing settings.
+Packages do not change your wallpaper or start background jobs during installation.
+To enable hourly maintenance for your user:
+
+```sh
+systemctl --user daemon-reload
+systemctl --user enable --now wiki-wallpaper-maintenance.timer
+```
+
+If you previously installed a source-checkout service under
+`~/.config/systemd/user/`, update its `ExecStart` to `/usr/bin/daily-walls --maintain`
+and remove its checkout-specific `WorkingDirectory` before reloading systemd.
+User service overrides take precedence over the packaged service.
+
+Build both packages from source with `python3 packaging/build.py` after installing
+`dpkg-deb` and `rpmbuild`. Outputs and SHA-256 checksums are written to `dist/`.
+Packages are unsigned. No open-source license has been declared for this project.
+
 ## The seven-wallpaper queue
 
 The app keeps **seven unused wallpapers** downloaded and ready. Click a thumbnail,
