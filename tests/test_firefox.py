@@ -1,6 +1,4 @@
 """Tests for Firefox Picture of the Day wallpaper source.
-
-Implemented by Google Antigravity.
 """
 from dataclasses import replace
 from pathlib import Path

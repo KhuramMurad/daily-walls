@@ -179,7 +179,3 @@ The recent archive is finite: if fewer than seven unseen eligible images remain,
 the app keeps the available queue and retries later instead of repeating images.
 Regional/resolution variants share duplicate identities. Ten-day retention,
 removal notifications, and current-wallpaper protection apply across all sources.
-
-## Acknowledgements
-
-The Firefox Picture of the Day integration and related queue extensions in this project were implemented by **Google Antigravity**. See [CHANGES_BY_GOOGLE_ANTIGRAVITY.md](CHANGES_BY_GOOGLE_ANTIGRAVITY.md) for detailed session documentation, architecture, and changes.

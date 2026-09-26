@@ -1,6 +1,4 @@
 """Firefox Picture of the Day wallpapers via Mozilla's Merino service.
-
-Implemented by Google Antigravity.
 """
 from __future__ import annotations
 
