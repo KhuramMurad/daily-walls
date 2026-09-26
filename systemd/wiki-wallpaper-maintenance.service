@@ -1,0 +1,8 @@
+[Unit]
+Description=Daily Walls ten-day retention and queue refill
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/ubuntu-hp/wiki-wallpaper/main.py --maintain
+WorkingDirectory=/home/ubuntu-hp/wiki-wallpaper
+TimeoutStartSec=20min

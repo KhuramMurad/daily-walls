@@ -1,0 +1,11 @@
+[Unit]
+Description=Expire old Daily Walls images and maintain seven unused wallpapers
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=120
+Unit=wiki-wallpaper-maintenance.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,20 @@
+# Python environments and generated files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Local credentials and runtime data
+.env
+.env.*
+!.env.example
+*.sqlite3
+*.sqlite3-*
+*.log
+.cache/
