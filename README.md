@@ -1,5 +1,9 @@
 # Daily Walls
 
+![Daily Walls GUI showing a wallpaper preview, source selector, and seven-image queue](assets/screenshots/daily-walls.png)
+
+[Photograph credits](assets/screenshots/CREDITS.md)
+
 Open **Daily Walls** from the application menu, or run:
 
 ```sh
