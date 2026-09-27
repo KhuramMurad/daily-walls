@@ -7,7 +7,7 @@ Commons, Bing, Firefox Picture of the Day, and images imported from your compute
 ![Daily Walls wallpaper browser](assets/screenshots/daily-walls.png)
 
 [Photograph credits](assets/screenshots/CREDITS.md) · [Linux guide](docs/linux.md) ·
-[Windows development](windows/README.md) · [Release history](CHANGELOG.md)
+[Windows guide](windows/README.md) · [Release history](CHANGELOG.md)
 
 ## Downloads
 
@@ -15,7 +15,7 @@ Commons, Bing, Firefox Picture of the Day, and images imported from your compute
 | --- | --- | --- |
 | Debian / Ubuntu | Stable Linux 1.1.3 | [Download DEB](https://github.com/KhuramMurad/daily-walls/releases/download/v1.1.3/daily-walls_1.1.3_all.deb) |
 | Fedora | Stable Linux 1.1.3 | [Download RPM](https://github.com/KhuramMurad/daily-walls/releases/download/v1.1.3/daily-walls-1.1.3-1.noarch.rpm) |
-| Windows 11 x64 | Development preview; no executable published yet | [Windows source and build instructions](windows/README.md) |
+| Windows 11 x64 | Preview 1.2.0-alpha.1 | [Download portable ZIP](https://github.com/KhuramMurad/daily-walls/releases/download/v1.2.0-alpha.1/daily-walls-1.2.0-alpha.1-windows-x64.zip) |
 
 Linux downloads: [release notes and all assets](https://github.com/KhuramMurad/daily-walls/releases/tag/v1.1.3)
 and [SHA-256 checksums](https://github.com/KhuramMurad/daily-walls/releases/download/v1.1.3/SHA256SUMS).
@@ -23,7 +23,10 @@ Older packages remain on the [Releases page](https://github.com/KhuramMurad/dail
 
 Installers are published as **GitHub Release assets**, not committed binaries.
 GitHub's automatically generated source ZIP/TAR archives are source code, not installers.
-Windows downloads will be published separately once a Windows build has passed validation.
+Windows has a [separate preview release](https://github.com/KhuramMurad/daily-walls/releases/tag/v1.2.0-alpha.1)
+with its own checksum. Extract the entire ZIP and open `DailyWalls.exe`; keep
+`_internal` beside it. Python and MSYS2 are not required. See the
+[Windows guide](windows/README.md) for maintenance and known limitations.
 
 ## Install or upgrade on Linux
 
@@ -116,9 +119,9 @@ dist/linux/                        Linux release artifacts (ignored)
 dist/windows/                      Windows build artifacts (ignored)
 ```
 
-The Windows GitHub Actions configuration is currently an **inactive template** at
-`windows/github-actions.yml`; its README explains activation. A push to `main`
-alone does not build packages or publish a release.
+The active Windows build workflow is `.github/workflows/windows.yml`, mirrored
+in `windows/github-actions.yml`. Pushes to `main` build and validate the Windows
+package and upload Actions artifacts. Public releases are published separately.
 
 ## Development checks
 
@@ -129,5 +132,6 @@ python3 -m unittest discover -s tests -v
 python3 -m unittest discover -s windows/tests -v
 ```
 
-Tests use temporary libraries and mock desktop changes. Native Windows packaging
-and interactive desktop behavior still require a Windows runner and desktop testing.
+Tests use temporary libraries and mock desktop changes. Both Windows executables
+pass packaged GUI/runtime checks on a Windows Server 2022 runner. Interactive
+wallpaper changes, notifications, and scheduling still need Windows 11 desktop validation.

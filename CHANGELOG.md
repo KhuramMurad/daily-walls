@@ -1,5 +1,19 @@
 # Release history
 
+## 1.2.0-alpha.1 — Windows preview — 2026-09-27
+
+- First portable Windows x64 package, with GUI and CLI executables and bundled GTK/Python runtime.
+- Native wallpaper backend, Windows storage and locking, WebP conversion, and optional per-user scheduled maintenance.
+- Preserve wallpaper comparison, local imports, saved gallery, and ten-day retention.
+- Activate Windows CI and verify both packaged launchers outside the MSYS2 environment, including the main window, Cairo previews, gallery, JPEG/PNG/WebP, TLS trust, imports, and locking.
+- Correct cross-platform file identity checks and rotating GUI log output.
+
+This is an unsigned preview targeting Windows 11. Automated validation runs on
+Windows Server 2022; interactive wallpaper changes, notifications, and scheduling
+still require Windows 11 desktop testing. Linux 1.1.3 remains the stable release.
+
+[Windows release and ZIP](https://github.com/KhuramMurad/daily-walls/releases/tag/v1.2.0-alpha.1)
+
 ## 1.1.3 — Linux — 2026-09-27
 
 - Keep Linux and Windows development together on `main`, with Windows-specific
@@ -9,7 +23,7 @@
 - Separate Linux outputs (`dist/linux/`) from Windows outputs (`dist/windows/`).
 - Document platform status, direct downloads, builds, and detailed Linux usage.
 
-Windows 1.2.0-alpha.1 is source-only development work, not a released executable.
+At the time of Linux 1.1.3, Windows support was source-only development work.
 
 ## 1.1.2 — Linux — 2026-09-27
 

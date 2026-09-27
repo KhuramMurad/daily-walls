@@ -4,9 +4,14 @@ Linux and Windows share the `main` branch. Windows runtime modules, packaging,
 configuration, and Windows-specific tests live in `windows/`. Windows builds
 write only to `dist/windows/` and `build/windows/`, independently of the Linux
 DEB/RPM packaging. Preview version:
-**1.2.0-alpha.1**, targeting Windows 11 x64. No Windows executable or installer
-has been built and published yet. Linux downloads are available from the
-[root README](../README.md).
+**1.2.0-alpha.1**, targeting Windows 11 x64.
+
+[Download the portable ZIP](https://github.com/KhuramMurad/daily-walls/releases/download/v1.2.0-alpha.1/daily-walls-1.2.0-alpha.1-windows-x64.zip) ·
+[Release notes and SHA256SUMS](https://github.com/KhuramMurad/daily-walls/releases/tag/v1.2.0-alpha.1)
+
+Both bundled executables passed the packaged GUI/runtime checks on Windows Server
+2022 with MSYS2 removed from PATH. This unsigned preview still needs interactive
+Windows 11 desktop validation. Linux downloads remain in the [root README](../README.md).
 
 ## Windows support
 
@@ -36,14 +41,15 @@ python -m unittest discover -s windows/tests -v
 python windows/build.py
 ```
 
-The workflow template `windows/github-actions.yml` runs these steps and
-smoke-tests both launchers with MSYS2 removed from PATH. To enable it, copy it to
-`.github/workflows/windows.yml`; GitHub requires `workflow` permission to push
-that active workflow. The template is inactive until installed there. Successful
-builds upload a portable ZIP and SHA256SUMS as Actions artifacts; they do not
-create public releases or run Linux packaging.
+The active workflow `.github/workflows/windows.yml` (mirrored in
+`windows/github-actions.yml`) runs these steps on Windows Server 2022 and
+smoke-tests both launchers with MSYS2 removed from PATH. The packaged tests open
+the main window and saved gallery, render a preview through Cairo, and verify
+JPEG/PNG/WebP decoding, TLS trust, local imports, conversion, and file locking.
+Successful builds upload a portable ZIP and SHA256SUMS as Actions artifacts;
+public releases are published separately. This workflow does not run Linux packaging.
 
-Expected build outputs:
+Build outputs:
 
 ```text
 dist/windows/
@@ -52,9 +58,7 @@ dist/windows/
   SHA256SUMS                                   ZIP integrity checksum
 ```
 
-These are expected output names, not links to an available download.
-
-After a successful build, extract the entire ZIP and run `DailyWalls.exe`. End users do not need Python or
+Extract the entire ZIP and run `DailyWalls.exe`. End users do not need Python or
 MSYS2. Use `DailyWallsCLI.exe --help` for command-line operations. Logs are stored
 at `%LOCALAPPDATA%\DailyWalls\logs\daily-walls.log`.
 
