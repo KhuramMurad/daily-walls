@@ -22,7 +22,9 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode, urlsplit
 from urllib.request import Request, urlopen
 
-DEFAULT_USER_AGENT = "daily-walls/1.1.2 (https://github.com/KhuramMurad/daily-walls)"
+from platform_support import cache_directory, config_directory
+
+DEFAULT_USER_AGENT = "daily-walls/1.1.3 (https://github.com/KhuramMurad/daily-walls)"
 
 LOG = logging.getLogger(__name__)
 API_URL = "https://commons.wikimedia.org/w/api.php"
@@ -193,7 +195,7 @@ class Fetcher:
         if timeout <= 0:
             raise ValueError("timeout must be positive")
         self.user_agent = user_agent
-        self.cache_dir = (cache_dir or Path.home() / ".cache/wiki-wallpaper").expanduser().resolve()
+        self.cache_dir = (cache_dir or cache_directory()).expanduser().resolve()
         self.timeout = timeout
         self._use_gateway = False
         self.progress = progress
@@ -476,9 +478,9 @@ def configured_user_agent(user_agent: str | None = None) -> str:
     """Use an explicit, environment, or saved identifier, then the project default."""
     agent = user_agent or os.environ.get("WIKI_WALLPAPER_USER_AGENT", "")
     if not agent.strip():
-        config_root = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+        config_root = config_directory()
         try:
-            agent = (config_root / "wiki-wallpaper/user-agent").read_text(encoding="utf-8").strip()
+            agent = (config_root / "user-agent").read_text(encoding="utf-8").strip()
         except FileNotFoundError:
             pass
         except (OSError, UnicodeError) as exc:

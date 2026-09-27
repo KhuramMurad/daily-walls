@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
-import fcntl
 from hashlib import sha256
 import json
 import logging
@@ -21,6 +20,7 @@ from bing import BingFetcher, bing_identity
 from firefox import FirefoxFetcher, firefox_identity, verified_dimensions
 from notifier import notify_removal
 from setter import set_wallpaper
+from platform_support import is_windows, data_directory, cache_directory, exclusive_lock
 
 LOG = logging.getLogger(__name__)
 QUEUE_SIZE = 7
@@ -76,9 +76,8 @@ class WallpaperLibrary:
     def __init__(self, data_dir: Path | None = None, cache_dir: Path | None = None,
                  clock: Callable[[], float] = time.time,
                  removal_notice: Callable[[int], object] = notify_removal) -> None:
-        base = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share")
-        self.data_dir = (data_dir or base / "wiki-wallpaper").expanduser().resolve()
-        self.cache_dir = (cache_dir or Path.home() / ".cache/wiki-wallpaper").expanduser().resolve()
+        self.data_dir = (data_dir or data_directory()).expanduser().resolve()
+        self.cache_dir = (cache_dir or cache_directory()).expanduser().resolve()
         self.images_dir = self.cache_dir / "queue"
         self.clock = clock
         self.removal_notice = removal_notice
@@ -113,12 +112,11 @@ class WallpaperLibrary:
 
     @contextmanager
     def _lock(self) -> Iterator[None]:
-        with (self.data_dir / "library.lock").open("a") as lock:
-            try:
-                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError as exc:
-                raise LibraryError("The wallpaper queue is already updating. Please try again shortly.") from exc
-            yield
+        try:
+            with exclusive_lock(self.data_dir / "library.lock"):
+                yield
+        except BlockingIOError as exc:
+            raise LibraryError("The wallpaper queue is already updating. Please try again shortly.") from exc
 
     @staticmethod
     def _entry(row: sqlite3.Row) -> QueueEntry:
@@ -227,6 +225,16 @@ class WallpaperLibrary:
             row = db.execute("SELECT i.* FROM images i JOIN settings s ON i.id=s.value WHERE s.key='current'").fetchone()
         if row:
             protected.add(self._entry(row).wallpaper.path.resolve())
+        if is_windows():
+            try:
+                from windows.desktop import current_wallpapers
+                protected.update(current_wallpapers())
+            except OSError as exc:
+                # Without monitor state, defer cleanup of all originals rather
+                # than risk removing a manually selected current wallpaper.
+                LOG.warning("Cannot inspect Windows wallpaper; cleanup deferred: %s", exc)
+                protected.update(entry.wallpaper.path.resolve() for entry in self.saved_images())
+            return protected
         try:
             import subprocess
             for schema in ("org.gnome.desktop.background", "org.cinnamon.desktop.background"):
@@ -255,6 +263,9 @@ class WallpaperLibrary:
         for entry in expired:
             try:
                 existed = entry.wallpaper.path.exists()
+                if is_windows() and entry.wallpaper.path.suffix.lower() == '.webp':
+                    from windows.desktop import converted_path
+                    converted_path(entry.wallpaper.path).unlink(missing_ok=True)
                 entry.wallpaper.path.unlink(missing_ok=True)
             except OSError as exc:
                 LOG.warning("Cannot remove expired wallpaper %s: %s", entry.wallpaper.path, exc)

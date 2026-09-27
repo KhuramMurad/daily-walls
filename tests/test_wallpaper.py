@@ -1,6 +1,7 @@
 import io
 import json
 import os
+import sys
 from pathlib import Path
 import tempfile
 import unittest
@@ -11,6 +12,11 @@ import setter
 
 
 class UserAgentTests(unittest.TestCase):
+    def setUp(self):
+        self.platform = patch('platform_support.is_windows', return_value=False)
+        self.platform.start()
+        self.addCleanup(self.platform.stop)
+
     def test_fresh_install_uses_project_default(self):
         with tempfile.TemporaryDirectory() as directory:
             with patch.dict(os.environ, {"XDG_CONFIG_HOME": directory}, clear=True):
@@ -94,6 +100,7 @@ class FetchTests(unittest.TestCase):
             self.assertEqual(api.call_args.kwargs['cmcontinue'], 'next')
 
 
+@unittest.skipIf(sys.platform == "win32", "Linux desktop command tests")
 class SetterTests(unittest.TestCase):
     def test_detect_sessions(self):
         for name, expected in [('ubuntu:GNOME', 'gnome'), ('X-Cinnamon', 'cinnamon'),

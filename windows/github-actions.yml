@@ -1,0 +1,62 @@
+name: Windows preview
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884 # v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-python
+            mingw-w64-ucrt-x86_64-python-gobject
+            mingw-w64-ucrt-x86_64-python-cairo
+            mingw-w64-ucrt-x86_64-python-pillow
+            mingw-w64-ucrt-x86_64-python-certifi
+            mingw-w64-ucrt-x86_64-gtk3
+            mingw-w64-ucrt-x86_64-webp-pixbuf-loader
+            mingw-w64-ucrt-x86_64-pyinstaller
+      - name: Unit tests
+        run: |
+          python -m unittest discover -s tests -v
+          python -m unittest discover -s windows/tests -v
+      - name: Build portable application
+        run: python windows/build.py
+      - name: Validate packaged application outside MSYS2
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32\WindowsPowerShell\v1.0"
+          Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
+          Remove-Item Env:GI_TYPELIB_PATH -ErrorAction SilentlyContinue
+          Remove-Item Env:GDK_PIXBUF_MODULE_FILE -ErrorAction SilentlyContinue
+          & ./dist/windows/DailyWalls/DailyWallsCLI.exe --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged self-test failed' }
+          & ./dist/windows/DailyWalls/DailyWallsCLI.exe --help
+          if ($LASTEXITCODE -ne 0) { throw 'CLI startup failed' }
+          $gui = Start-Process ./dist/windows/DailyWalls/DailyWalls.exe -ArgumentList '--self-test' -PassThru -Wait
+          if ($gui.ExitCode -ne 0) { throw 'Windowed launcher self-test failed' }
+      - name: Upload Windows preview
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: daily-walls-windows-x64-preview
+          path: |
+            dist/windows/daily-walls-*-windows-x64.zip
+            dist/windows/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14

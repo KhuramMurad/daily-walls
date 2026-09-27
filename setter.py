@@ -1,7 +1,6 @@
 """Native Linux wallpaper setters. Run inside the target graphical session."""
 from __future__ import annotations
 
-import fcntl
 import hashlib
 import json
 import logging
@@ -12,6 +11,8 @@ import shutil
 import signal
 import subprocess
 import tempfile
+
+from platform_support import is_windows
 
 LOG = logging.getLogger(__name__)
 TIMEOUT = 15.0
@@ -108,6 +109,7 @@ def _process_token(pid: int) -> str:
 
 
 def _sway(path: Path) -> None:
+    import fcntl
     executable = shutil.which("swaybg")
     if executable is None:
         raise WallpaperError("Required utility is not installed: swaybg")
@@ -163,6 +165,9 @@ def set_wallpaper(image: str | Path) -> str:
         path = Path(image).expanduser().resolve(strict=True)
         if not path.is_file() or not os.access(path, os.R_OK):
             raise WallpaperError(f"Wallpaper is not a readable file: {path}")
+        if is_windows():
+            from windows.desktop import set_wallpaper as apply_windows
+            return apply_windows(path)
         desktop = detect_desktop()
         if desktop in {"gnome", "cinnamon"}:
             _gsettings(path, desktop)

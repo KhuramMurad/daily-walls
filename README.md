@@ -1,5 +1,9 @@
 # Daily Walls
 
+Linux and Windows share this repository’s `main` branch. Windows support is a
+development preview; its code, packaging, and instructions are in [windows/](windows/README.md).
+Linux packages are built independently with `packaging/build.py`.
+
 ![Daily Walls GUI showing a wallpaper preview, source selector, and seven-image queue](assets/screenshots/daily-walls.png)
 
 [Photograph credits](assets/screenshots/CREDITS.md)
@@ -17,13 +21,13 @@ Download the `.deb` or `.rpm` from [GitHub Releases](https://github.com/KhuramMu
 Debian/Ubuntu (Python 3.10 or newer):
 
 ```sh
-sudo apt install ./daily-walls_1.1.2_all.deb
+sudo apt install ./daily-walls_1.1.3_all.deb
 ```
 
 Fedora (Python 3.10 or newer):
 
 ```sh
-sudo dnf install ./daily-walls-1.1.2-1.noarch.rpm
+sudo dnf install ./daily-walls-1.1.3-1.noarch.rpm
 ```
 
 Open **Daily Walls** from the application menu, or run `daily-walls --gui`.

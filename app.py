@@ -18,6 +18,7 @@ from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk, Pango
 from library import QUEUE_SIZE, QueueEntry, Snapshot, WallpaperLibrary
 from layout import image_placement
 from notifier import notify_wallpaper
+from platform_support import is_windows
 
 APPLICATION_ID = "io.github.KhuramMurad.daily-walls"
 
@@ -141,6 +142,8 @@ class WallpaperWindow(Gtk.ApplicationWindow):
         super().__init__(application=application, title="Daily Walls")
         Gtk.Settings.get_default().set_property("gtk-application-prefer-dark-theme", True)
         display = Gdk.Display.get_default()
+        if display is None:
+            raise RuntimeError("No graphical desktop session is available")
         monitor = display.get_primary_monitor() or display.get_monitor(0)
         workarea = monitor.get_workarea()
         self.set_default_size(min(1160, workarea.width - 80), min(820, workarea.height - 100))
@@ -700,7 +703,14 @@ class WallpaperApplication(Gtk.Application):
     def __init__(self, *, featured: bool = False, force: bool = False) -> None:
         GLib.set_application_name("Daily Walls")
         Gdk.set_program_class(APPLICATION_ID)
-        Gtk.Window.set_default_icon_name("daily-walls")
+        if is_windows():
+            from windows.desktop import set_application_identity
+            import sys
+            set_application_identity()
+            base = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent))
+            Gtk.Window.set_default_icon_from_file(str(base / 'windows' / 'assets' / 'daily-walls.ico'))
+        else:
+            Gtk.Window.set_default_icon_name("daily-walls")
         super().__init__(application_id=APPLICATION_ID, flags=Gio.ApplicationFlags.FLAGS_NONE)
 
     def do_activate(self) -> None:

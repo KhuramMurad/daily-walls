@@ -7,7 +7,7 @@ import subprocess
 import tarfile
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '1.1.2'
+VERSION = '1.1.3'
 OUT = ROOT / 'dist'
 WORK = ROOT / 'build' / 'packages'
 STAGE = WORK / 'payload'
@@ -32,7 +32,7 @@ def main():
         shutil.rmtree(WORK)
     STAGE.mkdir(parents=True)
     OUT.mkdir(exist_ok=True)
-    for name in ('app', 'bing', 'fetcher', 'firefox', 'layout', 'library', 'main', 'notifier', 'setter'):
+    for name in ('app', 'bing', 'fetcher', 'firefox', 'layout', 'library', 'main', 'notifier', 'setter', 'platform_support'):
         put(f'usr/share/daily-walls/{name}.py', (ROOT / f'{name}.py').read_text())
     put('usr/bin/daily-walls', '#!/bin/sh\nexec /usr/bin/python3 /usr/share/daily-walls/main.py "$@"\n', 0o755)
     put('usr/share/applications/io.github.KhuramMurad.daily-walls.desktop', '''[Desktop Entry]

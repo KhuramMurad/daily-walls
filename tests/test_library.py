@@ -46,6 +46,9 @@ class LibraryTests(unittest.TestCase):
                                         clock=lambda: self.now, removal_notice=self.notices.append)
         self.fetcher = FakeFetcher(self.library.images_dir)
         # These tests never query or change the real desktop.
+        self.windows_desktop_mock = patch("windows.desktop.current_wallpapers", return_value=set())
+        self.windows_desktop_mock.start()
+        self.addCleanup(self.windows_desktop_mock.stop)
         self.desktop = patch('subprocess.run', return_value=Mock(returncode=1, stdout=''))
         self.desktop.start()
         self.addCleanup(self.desktop.stop)
@@ -126,7 +129,10 @@ class LibraryTests(unittest.TestCase):
         outside = self.root / 'important.jpg'
         outside.write_bytes(b'important')
         symlink = self.library.images_dir / ('a' * 64 + '.jpg')
-        symlink.symlink_to(outside)
+        try:
+            symlink.symlink_to(outside)
+        except OSError as exc:
+            self.skipTest(f"Symbolic links unavailable for this test account: {exc}")
         for index, path in enumerate([outside, symlink]):
             wallpaper = Wallpaper(path, 'Unsafe', '', '', '', '', '', 1920, 1080, 'test')
             self.library._store(wallpaper, str(index), {str(index)}, self.now-RETENTION_SECONDS-1)
