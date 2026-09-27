@@ -8,6 +8,22 @@ import sys
 from platform_support import data_directory
 
 
+def _stdio_log(handler):
+    """Keep print/traceback output valid after the rotating log changes streams."""
+    class LogStream:
+        encoding = "utf-8"
+
+        def write(self, message):
+            if message.strip():
+                logging.getLogger("console").info(message.rstrip())
+            return len(message)
+
+        def flush(self):
+            handler.flush()
+
+    return LogStream()
+
+
 def run():
     import certifi
     os.environ.setdefault("SSL_CERT_FILE", certifi.where())
@@ -18,9 +34,9 @@ def run():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s', handlers=[handler])
     # Windowed PyInstaller executables have no stdout/stderr handles.
     if sys.stdout is None:
-        sys.stdout = handler.stream
+        sys.stdout = _stdio_log(handler)
     if sys.stderr is None:
-        sys.stderr = handler.stream
+        sys.stderr = _stdio_log(handler)
     try:
         if '--self-test' in sys.argv:
             from windows.selftest import run as self_test
