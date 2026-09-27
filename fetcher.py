@@ -1,7 +1,7 @@
 """Wikimedia wallpaper fetching, using only Python 3.10's standard library.
 
-Pass a descriptive User-Agent containing your real project/contact URL, e.g.
-``wiki-wallpaper/1.0 (mailto:you@example.org)``. No desktop changes occur here.
+Requests use a descriptive project User-Agent by default; callers may override
+it with their own contact identifier. No desktop changes occur here.
 """
 from __future__ import annotations
 
@@ -21,6 +21,8 @@ from typing import Any, Callable, Iterator
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode, urlsplit
 from urllib.request import Request, urlopen
+
+DEFAULT_USER_AGENT = "daily-walls/1.0.1 (https://github.com/KhuramMurad/daily-walls)"
 
 LOG = logging.getLogger(__name__)
 API_URL = "https://commons.wikimedia.org/w/api.php"
@@ -471,7 +473,7 @@ def fetch_wallpaper(*, force: bool = False, featured: bool = False,
 
 
 def configured_user_agent(user_agent: str | None = None) -> str:
-    """Load the user's contact identifier for all fetch modes."""
+    """Use an explicit, environment, or saved identifier, then the project default."""
     agent = user_agent or os.environ.get("WIKI_WALLPAPER_USER_AGENT", "")
     if not agent.strip():
         config_root = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
@@ -482,5 +484,5 @@ def configured_user_agent(user_agent: str | None = None) -> str:
         except (OSError, UnicodeError) as exc:
             raise FetchError(f"Cannot read User-Agent configuration: {exc}") from exc
     if not agent.strip():
-        raise FetchError("Set WIKI_WALLPAPER_USER_AGENT to wiki-wallpaper/1.0 (your contact URL)")
+        return DEFAULT_USER_AGENT
     return agent

@@ -6,8 +6,36 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from fetcher import Fetcher, FetchError
+from fetcher import Fetcher, FetchError, DEFAULT_USER_AGENT, configured_user_agent
 import setter
+
+
+class UserAgentTests(unittest.TestCase):
+    def test_fresh_install_uses_project_default(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.dict(os.environ, {"XDG_CONFIG_HOME": directory}, clear=True):
+                self.assertEqual(configured_user_agent(), DEFAULT_USER_AGENT)
+
+    def test_override_precedence_and_blank_config(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "wiki-wallpaper" / "user-agent"
+            config.parent.mkdir()
+            config.write_text("saved/1.0 (https://example.org)\n")
+            with patch.dict(os.environ, {"XDG_CONFIG_HOME": directory}, clear=True):
+                self.assertEqual(configured_user_agent(), "saved/1.0 (https://example.org)")
+                with patch.dict(os.environ, {"WIKI_WALLPAPER_USER_AGENT": "environment/1.0"}):
+                    self.assertEqual(configured_user_agent(), "environment/1.0")
+                    self.assertEqual(configured_user_agent("explicit/1.0"), "explicit/1.0")
+                config.write_text(" \n")
+                self.assertEqual(configured_user_agent(), DEFAULT_USER_AGENT)
+
+    def test_invalid_config_reports_error(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "wiki-wallpaper" / "user-agent"
+            config.mkdir(parents=True)
+            with patch.dict(os.environ, {"XDG_CONFIG_HOME": directory}, clear=True):
+                with self.assertRaisesRegex(FetchError, "Cannot read User-Agent"):
+                    configured_user_agent()
 
 
 class Response(io.BytesIO):

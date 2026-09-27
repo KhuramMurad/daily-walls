@@ -7,7 +7,7 @@ import subprocess
 import tarfile
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '1.0.0'
+VERSION = '1.0.1'
 OUT = ROOT / 'dist'
 WORK = ROOT / 'build' / 'packages'
 STAGE = WORK / 'payload'

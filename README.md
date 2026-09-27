@@ -17,13 +17,13 @@ Download the `.deb` or `.rpm` from [GitHub Releases](https://github.com/KhuramMu
 Debian/Ubuntu (Python 3.10 or newer):
 
 ```sh
-sudo apt install ./daily-walls_1.0.0_all.deb
+sudo apt install ./daily-walls_1.0.1_all.deb
 ```
 
 Fedora (Python 3.10 or newer):
 
 ```sh
-sudo dnf install ./daily-walls-1.0.0-1.noarch.rpm
+sudo dnf install ./daily-walls-1.0.1-1.noarch.rpm
 ```
 
 Open **Daily Walls** from the application menu, or run `daily-walls --gui`.
@@ -143,7 +143,7 @@ systemctl --user disable --now wiki-wallpaper-maintenance.timer
 - Legacy images: `~/.cache/wiki-wallpaper/` (also managed by retention)
 - Queue and permanent history: `~/.local/share/wiki-wallpaper/library.sqlite3`
   (`$XDG_DATA_HOME` is respected)
-- Contact/User-Agent: `~/.config/wiki-wallpaper/user-agent`
+- Optional contact/User-Agent override: `~/.config/wiki-wallpaper/user-agent`
   (`$XDG_CONFIG_HOME` is respected)
 - User timer/service: `~/.config/systemd/user/wiki-wallpaper-maintenance.*`
 - Application launcher: `~/.local/share/applications/io.github.wikiwallpaper.App.desktop`
@@ -163,6 +163,10 @@ service point to this project directory; update them if moving the project.
 The GUI uses the system Python, GTK 3 and PyGObject. Debian/Ubuntu packages are
 `python3-gi` and `gir1.2-gtk-3.0`. Firefox image validation also requires `python3-pil` (Pillow with WebP support).
 The other sources use Python’s standard library. Desktop setting utilities and `notify-send` must be installed.
+
+Downloads work without user configuration: the default User-Agent identifies Daily Walls
+and its project URL. To override it, set `WIKI_WALLPAPER_USER_AGENT` or save your
+identifier in the optional configuration file listed above.
 
 The Commons Action API is primary. On a connection failure, the app uses
 Wikimedia's official Commons REST gateway for category searches and Wikipedia's
