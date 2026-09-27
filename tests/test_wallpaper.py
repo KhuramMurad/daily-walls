@@ -75,7 +75,9 @@ class FetchTests(unittest.TestCase):
             with self.assertRaises(FetchError):
                 self.fetcher._download(self.info, True)
         self.assertEqual(path.read_bytes(), b'abc')
-        self.assertEqual(list(self.cache.iterdir()), [path])
+        remaining = list(self.cache.iterdir())
+        self.assertEqual(len(remaining), 1)
+        self.assertTrue(remaining[0].samefile(path))
 
     def test_potd_fallback_cache_and_force(self):
         with patch.object(self.fetcher, '_potd_title', side_effect=FetchError('missing')), \
