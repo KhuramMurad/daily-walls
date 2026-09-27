@@ -1,257 +1,133 @@
 # Daily Walls
 
-Linux and Windows share this repository’s `main` branch. Windows support is a
-development preview; its code, packaging, and instructions are in [windows/](windows/README.md).
-Linux packages are built independently with `packaging/build.py`.
+Browse landscape wallpapers, compare alternatives before choosing, and keep a
+local collection with automatic ten-day retention. Sources include Wikimedia
+Commons, Bing, Firefox Picture of the Day, and images imported from your computer.
 
-![Daily Walls GUI showing a wallpaper preview, source selector, and seven-image queue](assets/screenshots/daily-walls.png)
+![Daily Walls wallpaper browser](assets/screenshots/daily-walls.png)
 
-[Photograph credits](assets/screenshots/CREDITS.md)
+[Photograph credits](assets/screenshots/CREDITS.md) · [Linux guide](docs/linux.md) ·
+[Windows development](windows/README.md) · [Release history](CHANGELOG.md)
 
-Open **Daily Walls** from the application menu, or run:
+## Downloads
+
+| Platform | Status | Package / instructions |
+| --- | --- | --- |
+| Debian / Ubuntu | Stable Linux 1.1.3 | [Download DEB](https://github.com/KhuramMurad/daily-walls/releases/download/v1.1.3/daily-walls_1.1.3_all.deb) |
+| Fedora | Stable Linux 1.1.3 | [Download RPM](https://github.com/KhuramMurad/daily-walls/releases/download/v1.1.3/daily-walls-1.1.3-1.noarch.rpm) |
+| Windows 11 x64 | Development preview; no executable published yet | [Windows source and build instructions](windows/README.md) |
+
+Linux downloads: [release notes and all assets](https://github.com/KhuramMurad/daily-walls/releases/tag/v1.1.3)
+and [SHA-256 checksums](https://github.com/KhuramMurad/daily-walls/releases/download/v1.1.3/SHA256SUMS).
+Older packages remain on the [Releases page](https://github.com/KhuramMurad/daily-walls/releases).
+
+Installers are published as **GitHub Release assets**, not committed binaries.
+GitHub's automatically generated source ZIP/TAR archives are source code, not installers.
+Windows downloads will be published separately once a Windows build has passed validation.
+
+## Install or upgrade on Linux
+
+Download the package for your distribution, then run:
 
 ```sh
-/usr/bin/python3 main.py --gui
-```
-
-## Install a package
-
-Download the `.deb` or `.rpm` from [GitHub Releases](https://github.com/KhuramMurad/daily-walls/releases).
-
-Debian/Ubuntu (Python 3.10 or newer):
-
-```sh
+# Debian / Ubuntu
 sudo apt install ./daily-walls_1.1.3_all.deb
-```
 
-Fedora (Python 3.10 or newer):
-
-```sh
+# Fedora
 sudo dnf install ./daily-walls-1.1.3-1.noarch.rpm
 ```
 
-Open **Daily Walls** from the application menu, or run `daily-walls --gui`.
-The packages install the system Python/GTK, Pillow, and WebP loader dependencies.
-Desktop-specific wallpaper tools (such as `swaybg`, `hyprpaper`, or `feh`) must
-be available for those desktops. GNOME and Cinnamon use their existing settings.
-Packages do not change your wallpaper or start background jobs during installation.
-To enable hourly maintenance for your user:
+Open **Daily Walls** from your application menu, or run `daily-walls --gui`.
+After upgrading, close and reopen an already-running app. Your saved wallpapers
+and settings are preserved. Packages require Python 3.10 or newer and install
+the declared GTK, Pillow, and WebP runtime dependencies.
+
+GNOME, Cinnamon, KDE, XFCE, Sway, Hyprland, and generic X11 have wallpaper backends.
+Desktop-specific utilities such as `swaybg`, `hyprpaper`, or `feh` must be installed
+for the corresponding desktop. Installation does not change your wallpaper or
+enable background jobs.
+
+With `SHA256SUMS` and both installers in the same download directory:
+
+```sh
+sha256sum --check SHA256SUMS
+```
+
+Packages are unsigned. No open-source license has been declared for this project.
+
+## Features
+
+- Separate queues of up to seven images for each source, with persistent duplicate detection.
+- **Find another** shows the selected and new image side by side before changing the queue.
+- **Saved wallpapers** displays retained images, including replaced and previously used files.
+- **Locally saved wallpapers** imports landscape JPEG, PNG, and WebP images from any source.
+- Fit/fill previews preserve proportions without modifying originals.
+- Managed files expire ten days after download/import; the current wallpaper stays protected.
+- Original files selected for local import are never deleted or modified.
+
+Commons selects assessed 4K wallpapers across seven scenery subjects. Bing uses
+its recent 4K archive; Firefox and local imports accept landscape images of at
+least 1920 × 1080. Local imports are filled manually. See the
+[Linux guide](docs/linux.md) for source details, storage, retention, and commands.
+
+## Optional Linux background maintenance
+
+The app maintains its library while open. To also run hourly maintenance while closed:
 
 ```sh
 systemctl --user daemon-reload
 systemctl --user enable --now wiki-wallpaper-maintenance.timer
 ```
 
-If you previously installed a source-checkout service under
-`~/.config/systemd/user/`, update its `ExecStart` to `/usr/bin/daily-walls --maintain`
-and remove its checkout-specific `WorkingDirectory` before reloading systemd.
-User service overrides take precedence over the packaged service.
-
-Build both packages from source with `python3 packaging/build.py` after installing
-`dpkg-deb` and `rpmbuild`. Outputs and SHA-256 checksums are written to `dist/`.
-Packages are unsigned. No open-source license has been declared for this project.
-
-## The seven-wallpaper queue
-
-The app keeps **seven unused wallpapers** downloaded and ready. Click a thumbnail,
-or Previous / Next, to preview a saved image. **Set as wallpaper** applies it,
-marks it used, and downloads a new, unique image to refill its slot. Browsing
-previews does not consume the queue. Previously used images cannot be applied
-again through the queue. Refill queue retries missing slots after a network error.
-The local queue is filled manually using **Import images**.
-
-Commons images must be landscape orientation (`width > height`) and at least **3840 × 2160**.
-They must also have a Commons **Featured** or **Quality image** assessment.
-Featured images are preferred, with desktop-friendly proportions used to rank
-matching candidates. Resolution alone does not qualify an image.
-Selections come only from these Commons computer-wallpaper categories, with
-membership verified against the file's metadata:
-
-- Computer wallpapers
-- Commons featured desktop backgrounds
-- Widescreen desktop backgrounds
-
-The seven queue slots are balanced by subject: **mountains, coastlines, lakes and
-waterfalls, forests, deserts, architecture, and space**. Each slot has one image;
-using or replacing it searches for another in the same subject. The file title,
-description, and subject categories are checked to reject unrelated keyword
-matches and animal-centered images. If a subject has no qualifying unseen result,
-its slot remains empty with a retry message rather than duplicating another topic.
-
-These are categories for actual desktop backgrounds, not the physical wall
-coverings in Commons' “Wallpapers” category. General POTD and unrelated featured
-images are no longer used by the app or CLI. Landscape means horizontal
-orientation. The current selection profile favours scenic landscapes and sky/space
-imagery, rather than wildlife. Artistic appeal is subjective; **Find another**
-downloads an alternative and shows it beside the selected image. Choose **Keep
-selected** or **Use new in queue**; the desktop changes only when you later click
-**Set as wallpaper**. Closing the comparison keeps the selected image. A failed
-download leaves the queue unchanged. Both images stay saved until their original
-ten-day expiry and remain in the no-repeat history.
-
-Open **Saved wallpapers** in the header to browse all retained images across
-sources, including used images and alternatives you did not choose. Click an image
-to open it in your image viewer, or use **Open folder** to access the downloaded files.
-
-The responsive main window adapts to the available monitor area. A large preview
-and a compact details panel keep the queue and action buttons visible.
-**Fit entire image** is the default and preserves all image edges without
-stretching; unused space is expected when the image and frame have different
-proportions. **Fill frame (crop edges)** is available as an explicit option.
-Thumbnail previews also preserve the complete image. The original is never edited.
-The author, license, quality assessment, and expiry appear in the details panel.
-Full attribution is available in the author tooltip and the Commons file link.
-
-## No repeated wallpapers
-
-A persistent SQLite database remembers canonical file titles, original URLs
-(with tracking parameters removed), Commons SHA-1 hashes, and downloaded SHA-256
-hashes. This prevents repeated selections, including byte-identical files under
-different names. The history survives app restarts and image deletion. It is not
-a perceptual similarity detector for separately edited or recompressed versions.
-Existing downloads from the previous app version are imported into this history.
-
-If the network or category results cannot supply seven unseen qualifying files,
-the app keeps the available queue and shows a retry message. It never fills missing
-slots with duplicates or unrelated images. The official API gateway fallback
-searches up to 100 results per subject/category; the primary Action API follows pagination.
-
-## Ten-day retention
-
-Every downloaded image expires **10 × 24 hours after it was saved**. Applying or
-previewing it does not restart that clock. Used images remain saved until expiry,
-so storage can contain more than the seven upcoming images.
-
-Expired app-owned files are permanently deleted, with a desktop notification
-before removal and a persistent message in the app afterward. Removal messages
-are independent of the optional wallpaper-change notifications.
-
-**Your current wallpaper is kept, even after ten days, until you change it.**
-After you apply another wallpaper in the app, an expired previous background is
-removed. The app never automatically changes your background as part of cleanup.
-The last background applied by the app is conservatively protected when desktop
-state cannot be inspected; GNOME/Cinnamon background settings are also checked.
-
-Cleanup and refilling run on app startup, every five minutes while the app is
-open, and through the installed hourly user timer while it is closed. An hourly
-run can remove files up to about one hour after their ten-day expiry. Missed
-scheduled runs are handled when the user manager resumes; nothing runs while
-the computer is powered off.
-
-```sh
-systemctl --user status wiki-wallpaper-maintenance.timer
-systemctl --user list-timers wiki-wallpaper-maintenance.timer
-```
-
-To disable background maintenance (in-app checks still run):
+To disable it:
 
 ```sh
 systemctl --user disable --now wiki-wallpaper-maintenance.timer
 ```
 
-## Storage and commands
+Older source-checkout service overrides in `~/.config/systemd/user/` must use
+`ExecStart=/usr/bin/daily-walls --maintain` and remove checkout-specific
+`WorkingDirectory` settings. These overrides take precedence over packaged units.
 
-- Images: `~/.cache/wiki-wallpaper/queue/`
-- Legacy images: `~/.cache/wiki-wallpaper/` (also managed by retention)
-- Queue and permanent history: `~/.local/share/wiki-wallpaper/library.sqlite3`
-  (`$XDG_DATA_HOME` is respected)
-- Optional contact/User-Agent override: `~/.config/wiki-wallpaper/user-agent`
-  (`$XDG_CONFIG_HOME` is respected)
-- User timer/service: `~/.config/systemd/user/wiki-wallpaper-maintenance.*`
-- Application launcher: `/usr/share/applications/io.github.KhuramMurad.daily-walls.desktop`
+## Build from source
 
-```sh
-/usr/bin/python3 main.py --notify      # Apply an unused wallpaper and refill
-/usr/bin/python3 main.py --maintain    # Cleanup/refill without changing wallpaper
-/usr/bin/python3 main.py --cleanup     # Cleanup only; protect the current wallpaper
+Both platforms share the **main** branch and application logic. Platform-specific
+packaging, configuration, build folders, and outputs are separate.
+
+| Platform | Build command | Outputs |
+| --- | --- | --- |
+| Linux | `python3 packaging/build.py` | `dist/linux/`: DEB, RPM, `SHA256SUMS` |
+| Windows | `python windows/build.py` (on Windows) | `dist/windows/`: portable ZIP, `SHA256SUMS`, unpacked application |
+
+The Linux builder requires `dpkg-deb` and `rpmbuild`. The Windows builder requires
+MSYS2 UCRT64 and the dependencies listed in [windows/README.md](windows/README.md).
+A Windows executable cannot be built by running the Windows builder on Fedora.
+
+```text
+app.py, library.py, fetcher.py, ...  Shared application and Linux integration
+platform_support.py                Platform paths and file-lock adapters
+packaging/                         Linux DEB/RPM builder
+systemd/                           Linux maintenance units
+windows/                           Windows runtime, scripts, icon, build spec, and tests
+docs/linux.md                      Detailed Linux usage guide
+build/linux/                       Temporary Linux build files (ignored)
+build/windows/                     Temporary Windows build files (ignored)
+dist/linux/                        Linux release artifacts (ignored)
+dist/windows/                      Windows build artifacts (ignored)
 ```
 
-`--force` and `--featured` remain accepted for compatibility, but cannot bypass
-queue uniqueness or wallpaper category filtering. The launcher and installed
-service point to this project directory; update them if moving the project.
+The Windows GitHub Actions configuration is currently an **inactive template** at
+`windows/github-actions.yml`; its README explains activation. A push to `main`
+alone does not build packages or publish a release.
 
-## Runtime and network
+## Development checks
 
-The GUI uses the system Python, GTK 3 and PyGObject. Debian/Ubuntu packages are
-`python3-gi` and `gir1.2-gtk-3.0`. Firefox image validation also requires `python3-pil` (Pillow with WebP support).
-The other sources use Python’s standard library. Desktop setting utilities and `notify-send` must be installed.
-
-Downloads work without user configuration: the default User-Agent identifies Daily Walls
-and its project URL. To override it, set `WIKI_WALLPAPER_USER_AGENT` or save your
-identifier in the optional configuration file listed above.
-
-The Commons Action API is primary. On a connection failure, the app uses
-Wikimedia's official Commons REST gateway for category searches and Wikipedia's
-shared Commons repository for metadata. Original images still download directly
-from `upload.wikimedia.org`, with TLS verification enabled. The gateway is subject
-to [Wikimedia's deprecation policy](https://wikitech.wikimedia.org/wiki/API_Portal/Deprecation).
-
-## Checks
+From the repository root, with Python, PyGObject, GTK 3, and Pillow installed:
 
 ```sh
-/usr/bin/python3 -m unittest discover -s tests -v
+python3 -m unittest discover -s tests -v
+python3 -m unittest discover -s windows/tests -v
 ```
 
-Tests cover 4K/quality/subject filtering, balanced slots, queue replacement,
-aspect-preserving fit/fill geometry, downloads, desktop commands, gateway
-fallback, persistent queue/refill, duplicate identities/content, partial failures,
-concurrent writers, expiry boundaries, deletion notices, active-wallpaper
-protection, and restricting deletion to app-owned paths. Expiry tests use a
-simulated clock and temporary files, not your desktop or real saved images.
-
-### Wallpaper sources: Commons, Bing, Firefox, and local images
-
-Use the source dropdown at the top of the app to choose **Firefox · Picture of the day**,
-**Bing · Daily wallpapers**, or **Commons · Premium scenery**. Each source keeps its own
-seven-image queue; switching sources preserves saved images. The selected source is remembered
-and used by scheduled refills. CLI: `python3 main.py --source firefox --maintain`
-(download only), or `--source firefox` to apply an image.
-
-### Locally saved wallpapers
-
-Select **Locally saved wallpapers**, then **Import images…** to add images from
-any folder or source to a separate queue of up to seven wallpapers. JPEG, PNG,
-and WebP files must fully decode, be landscape (`width > height`), and measure
-at least **1920 × 1080**. Images keep their original proportions. Files larger
-than 50 MB and previously saved images are rejected.
-
-Imports copy files into managed storage without changing the original files.
-Managed copies expire ten days after import, with current-wallpaper protection.
-**Compare imported image…** lets you compare an alternative before replacing a
-queue image. Import more images after applying one to refill the queue; this
-category does not download images automatically. `--source local --maintain`
-performs cleanup only.
-
-Existing imports from the former Unsplash category appear here automatically,
-with their saved dates, history, and expiry preserved. Imported files do not
-supply verified photographer or license metadata; refer to their original source.
-
-### Firefox picture of the day wallpapers
-
-Firefox daily wallpapers are fetched through Mozilla's Merino service
-(`merino.services.mozilla.com/api/v1/rss/picture-of-the-day`), which powers the native
-Firefox New Tab "Picture of the Day" background feature. Merino delivers high-resolution
-WebP images with attribution, descriptions, and Commons licensing details.
-The Firefox queue accepts landscape images of at least 1920 × 1080; actual
-dimensions appear in the details panel. Images are fully decoded before saving. Recent days are archived and refilled into the Firefox queue.
-Ten-day retention, removal notifications, and active-wallpaper protection apply across all sources.
-
-### Bing daily wallpapers
-
-Use the source dropdown at the top of the app to choose **Bing · Daily wallpapers**
-or **Commons · Premium scenery**. Each source keeps its own seven-image queue;
-switching sources preserves saved images. The selected source is remembered and
-used by scheduled refills. CLI: `python3 main.py --source bing --maintain`
-(download only), or `--source bing` to apply an image.
-
-Bing downloads use the public, undocumented homepage archive across several
-regional editions. Only downloadable (`wp=true`) JPEG images whose actual dimensions
-are at least 3840×2160 and landscape are accepted. Bing's editorial daily images
-have their own subjects; they do not use Commons' seven scenery themes or assessments.
-Credits and the original Bing information link accompany each image. Images are
-labelled **Wallpaper use only**, not Creative Commons. See Microsoft's
-[homepage guidance](https://support.microsoft.com/en-us/bing/explore-the-homepage).
-The recent archive is finite: if fewer than seven unseen eligible images remain,
-the app keeps the available queue and retries later instead of repeating images.
-Regional/resolution variants share duplicate identities. Ten-day retention,
-removal notifications, and current-wallpaper protection apply across all sources.
+Tests use temporary libraries and mock desktop changes. Native Windows packaging
+and interactive desktop behavior still require a Windows runner and desktop testing.

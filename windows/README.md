@@ -4,7 +4,9 @@ Linux and Windows share the `main` branch. Windows runtime modules, packaging,
 configuration, and Windows-specific tests live in `windows/`. Windows builds
 write only to `dist/windows/` and `build/windows/`, independently of the Linux
 DEB/RPM packaging. Preview version:
-**1.2.0-alpha.1**, targeting Windows 11 x64. No stable Windows release is published.
+**1.2.0-alpha.1**, targeting Windows 11 x64. No Windows executable or installer
+has been built and published yet. Linux downloads are available from the
+[root README](../README.md).
 
 ## Windows support
 
@@ -37,10 +39,22 @@ python windows/build.py
 The workflow template `windows/github-actions.yml` runs these steps and
 smoke-tests both launchers with MSYS2 removed from PATH. To enable it, copy it to
 `.github/workflows/windows.yml`; GitHub requires `workflow` permission to push
-that active workflow. The template is inactive until installed there. Successful builds upload a portable ZIP and SHA256SUMS
-as Actions artifacts; they do not create public releases or run Linux packaging.
+that active workflow. The template is inactive until installed there. Successful
+builds upload a portable ZIP and SHA256SUMS as Actions artifacts; they do not
+create public releases or run Linux packaging.
 
-Extract the entire ZIP and run `DailyWalls.exe`. End users do not need Python or
+Expected build outputs:
+
+```text
+dist/windows/
+  DailyWalls/                                  Unpacked application and scripts
+  daily-walls-1.2.0-alpha.1-windows-x64.zip      Portable preview
+  SHA256SUMS                                   ZIP integrity checksum
+```
+
+These are expected output names, not links to an available download.
+
+After a successful build, extract the entire ZIP and run `DailyWalls.exe`. End users do not need Python or
 MSYS2. Use `DailyWallsCLI.exe --help` for command-line operations. Logs are stored
 at `%LOCALAPPDATA%\DailyWalls\logs\daily-walls.log`.
 

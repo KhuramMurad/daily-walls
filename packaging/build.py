@@ -8,8 +8,8 @@ import tarfile
 
 ROOT = Path(__file__).resolve().parent.parent
 VERSION = '1.1.3'
-OUT = ROOT / 'dist'
-WORK = ROOT / 'build' / 'packages'
+OUT = ROOT / 'dist' / 'linux'
+WORK = ROOT / 'build' / 'linux'
 STAGE = WORK / 'payload'
 
 
@@ -31,7 +31,7 @@ def main():
     if WORK.exists():
         shutil.rmtree(WORK)
     STAGE.mkdir(parents=True)
-    OUT.mkdir(exist_ok=True)
+    OUT.mkdir(parents=True, exist_ok=True)
     for name in ('app', 'bing', 'fetcher', 'firefox', 'layout', 'library', 'main', 'notifier', 'setter', 'platform_support'):
         put(f'usr/share/daily-walls/{name}.py', (ROOT / f'{name}.py').read_text())
     put('usr/bin/daily-walls', '#!/bin/sh\nexec /usr/bin/python3 /usr/share/daily-walls/main.py "$@"\n', 0o755)
@@ -49,6 +49,8 @@ StartupWMClass=io.github.KhuramMurad.daily-walls
 ''')
     put('usr/share/icons/hicolor/scalable/apps/daily-walls.svg', (ROOT / 'assets/wiki-wallpaper.svg').read_text())
     put('usr/share/doc/daily-walls/README.md', (ROOT / 'README.md').read_text())
+    put('usr/share/doc/daily-walls/docs/linux.md', (ROOT / 'docs/linux.md').read_text())
+    put('usr/share/doc/daily-walls/CHANGELOG.md', (ROOT / 'CHANGELOG.md').read_text())
     for name in ('wiki-wallpaper-maintenance.service', 'wiki-wallpaper-maintenance.timer'):
         text = (ROOT / 'systemd' / name).read_text()
         text = text.replace('ExecStart=/usr/bin/python3 /home/ubuntu-hp/wiki-wallpaper/main.py --maintain',
@@ -88,7 +90,7 @@ tar -xzf %{{SOURCE0}} -C %{{buildroot}}
 /usr/share/daily-walls
 /usr/share/applications/io.github.KhuramMurad.daily-walls.desktop
 /usr/share/icons/hicolor/scalable/apps/daily-walls.svg
-%doc /usr/share/doc/daily-walls/README.md
+%doc /usr/share/doc/daily-walls
 /usr/lib/systemd/user/wiki-wallpaper-maintenance.service
 /usr/lib/systemd/user/wiki-wallpaper-maintenance.timer
 '''
