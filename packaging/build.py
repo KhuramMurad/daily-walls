@@ -7,7 +7,7 @@ import subprocess
 import tarfile
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '1.0.1'
+VERSION = '1.1.2'
 OUT = ROOT / 'dist'
 WORK = ROOT / 'build' / 'packages'
 STAGE = WORK / 'payload'
@@ -45,6 +45,7 @@ Terminal=false
 Categories=Utility;GTK;
 Keywords=wallpaper;background;desktop;
 StartupNotify=true
+StartupWMClass=io.github.KhuramMurad.daily-walls
 ''')
     put('usr/share/icons/hicolor/scalable/apps/daily-walls.svg', (ROOT / 'assets/wiki-wallpaper.svg').read_text())
     put('usr/share/doc/daily-walls/README.md', (ROOT / 'README.md').read_text())

@@ -13,7 +13,7 @@ from setter import WallpaperError
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Daily Walls: unique landscape wallpapers from Bing, Firefox, and Wikimedia Commons")
-    parser.add_argument("--source", choices=("commons", "bing", "firefox"), help="Select and remember the wallpaper source")
+    parser.add_argument("--source", choices=("commons", "bing", "firefox", "local"), help="Select and remember the wallpaper source")
     parser.add_argument("--force", action="store_true", help="Refresh missing queue slots; duplicate history is always preserved")
     parser.add_argument("--featured", action="store_true", help="Compatibility flag; selections now always use desktop-wallpaper categories")
     parser.add_argument("--notify", action="store_true", help="Show attribution when applying a wallpaper")

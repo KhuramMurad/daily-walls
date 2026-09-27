@@ -45,22 +45,22 @@ class _ImageRedirectHandler(HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-def verified_dimensions(path: Path) -> tuple[int, int]:
+def verified_dimensions(path: Path, *, source: str = "Firefox") -> tuple[int, int]:
     """Verify structure and decode pixels before admitting a downloaded image."""
     try:
         from PIL import Image
     except ImportError as exc:
-        raise FetchError("Firefox image validation requires Pillow (python3-pil)") from exc
+        raise FetchError(f"{source} image validation requires Pillow (python3-pillow on Fedora, python3-pil on Ubuntu)") from exc
     try:
         with Image.open(path) as img:
             if img.format not in {"WEBP", "JPEG", "PNG"}:
-                raise FetchError("Unsupported Firefox image format")
+                raise FetchError(f"Unsupported {source} image format")
             img.verify()
         with Image.open(path) as img:
             img.load()
             return img.size
     except (OSError, ValueError, SyntaxError, Image.DecompressionBombError) as exc:
-        raise FetchError(f"Invalid Firefox image: {exc}") from exc
+        raise FetchError(f"Invalid {source} image: {exc}") from exc
 
 
 def firefox_identity(url: str) -> str:

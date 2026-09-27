@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 import logging
+from pathlib import Path
 import threading
 from typing import Callable, TypeVar
 
@@ -18,9 +19,11 @@ from library import QUEUE_SIZE, QueueEntry, Snapshot, WallpaperLibrary
 from layout import image_placement
 from notifier import notify_wallpaper
 
+APPLICATION_ID = "io.github.KhuramMurad.daily-walls"
+
 Result = TypeVar("Result")
 CSS = b"""
-window { background: #11191d; color: #e9f0ef; }
+window, window.background, dialog.background { background: #11191d; color: #e9f0ef; }
 headerbar { background: #172328; color: #e9f0ef; border: none; }
 .hero { font-size: 27px; font-weight: 700; color: #f5f9f8; }
 .eyebrow { color: #75c9b3; font-size: 11px; font-weight: 700; letter-spacing: 2px; }
@@ -38,6 +41,8 @@ button.selected { border-color: #83d3b8; }
 .error { color: #ffb5a7; }
 .notice { color: #e9c790; }
 checkbutton { color: #b4c9ce; }
+dialog, dialog box { color: #e9f0ef; }
+.dialog-vbox { background: #11191d; }
 """
 
 
@@ -134,6 +139,7 @@ class WallpaperWindow(Gtk.ApplicationWindow):
     def __init__(self, application: Gtk.Application, *, featured: bool = False,
                  force: bool = False, library: WallpaperLibrary | None = None) -> None:
         super().__init__(application=application, title="Daily Walls")
+        Gtk.Settings.get_default().set_property("gtk-application-prefer-dark-theme", True)
         display = Gdk.Display.get_default()
         monitor = display.get_primary_monitor() or display.get_monitor(0)
         workarea = monitor.get_workarea()
@@ -152,6 +158,10 @@ class WallpaperWindow(Gtk.ApplicationWindow):
         header = Gtk.HeaderBar(title="Daily Walls", show_close_button=True)
         header.set_subtitle("Seven fresh views, ready for your desktop")
         self.set_titlebar(header)
+        saved = Gtk.Button(label="Saved wallpapers")
+        saved.set_tooltip_text("Browse all downloaded wallpapers, including replaced images")
+        saved.connect("clicked", self._saved_wallpapers)
+        header.pack_end(saved)
         provider = Gtk.CssProvider()
         provider.load_from_data(CSS)
         Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider,
@@ -166,6 +176,7 @@ class WallpaperWindow(Gtk.ApplicationWindow):
         self.source_picker.append("commons", "Commons · Premium scenery")
         self.source_picker.append("bing", "Bing · Daily wallpapers")
         self.source_picker.append("firefox", "Firefox · Picture of the day")
+        self.source_picker.append("local", "Locally saved wallpapers")
         self.source_picker.set_active_id(self.library.source)
         self.source_picker.connect("changed", self._source_changed)
         heading.pack_start(self.source_picker, False, False, 0)
@@ -200,9 +211,16 @@ class WallpaperWindow(Gtk.ApplicationWindow):
         self.details.set_max_width_chars(25)
         sidebar.pack_start(self.details, False, False, 0)
         self.replace_image = Gtk.Button(label="Find another")
-        self.replace_image.set_tooltip_text("Replace this queue image with another in the same subject. Your desktop is unchanged.")
+        self.replace_image.set_tooltip_text("Download an alternative, compare both images, and choose which to keep in the queue.")
         self.replace_image.connect("clicked", self._replace)
         sidebar.pack_start(self.replace_image, False, False, 0)
+        self.local_actions = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.import_images = Gtk.Button(label="Import images…")
+        self.import_images.connect("clicked", lambda _: self._import_local())
+        self.local_actions.pack_start(self.import_images, False, False, 0)
+        self.local_actions.set_no_show_all(True)
+        self.import_images.show()
+        sidebar.pack_start(self.local_actions, False, False, 0)
         sidebar.pack_start(Gtk.Separator(), False, False, 0)
         self.fit_mode = Gtk.ComboBoxText()
         self.fit_mode.append("fit", "Fit entire image")
@@ -274,6 +292,7 @@ class WallpaperWindow(Gtk.ApplicationWindow):
         self.previous.set_sensitive(len(self.entries) > 1)
         self.next.set_sensitive(len(self.entries) > 1)
         self.source_picker.set_sensitive(not self.busy)
+        self.import_images.set_sensitive(not self.busy)
         self.refresh.set_sensitive(not self.busy)
         self.apply.set_sensitive(not self.busy and self._selected() is not None)
         self.replace_image.set_sensitive(not self.busy and self._selected() is not None)
@@ -293,7 +312,15 @@ class WallpaperWindow(Gtk.ApplicationWindow):
             self.spinner.stop()
 
     def _show_snapshot(self, snapshot: Snapshot) -> None:
-        if self.library.source == "bing":
+        local = self.library.source == "local"
+        self.local_actions.set_visible(local)
+        self.replace_image.set_label("Compare imported image…" if local else "Find another")
+        self.replace_image.set_tooltip_text("Import an alternative and compare it before changing your queue." if local else
+                                          "Download an alternative and compare it before changing your queue.")
+        self.refresh.set_label("Refresh library" if local else "Refill queue")
+        if local:
+            heading = "HD+ · LOCALLY SAVED LANDSCAPES"
+        elif self.library.source == "bing":
             heading = "4K · BING DAILY WALLPAPERS"
         elif self.library.source == "firefox":
             heading = "HD+ · FIREFOX PICTURE OF THE DAY"
@@ -344,8 +371,13 @@ class WallpaperWindow(Gtk.ApplicationWindow):
         else:
             self.preview_generation += 1
             self.preview.set_image(None)
+            self.theme_label.set_text("YOUR NEXT VIEW")
             self.title_label.set_text("No wallpapers ready yet")
-            self.credit.set_text("Use Refill queue to download seven unique wallpapers.")
+            self.credit.set_lines(3)
+            self.credit.set_text("Import landscape images from any folder on your computer." if local else
+                                 "Use Refill queue to download seven unique wallpapers.")
+            self.details.set_text("Landscape images · At least 1920 × 1080" if local else "")
+        self.source.set_visible(bool(self.entries) and not local)
         self._controls()
 
     def _select(self, image_id: str) -> None:
@@ -368,10 +400,13 @@ class WallpaperWindow(Gtk.ApplicationWindow):
         self.title_label.set_text(wallpaper.title)
         self.title_label.set_tooltip_text(wallpaper.title)
         self.credit.set_text(wallpaper.photographer)
+        self.credit.set_lines(2)
         self.credit.set_tooltip_text(wallpaper.attribution or wallpaper.photographer)
         expires = datetime.fromtimestamp(entry.expires_at, timezone.utc).astimezone().strftime("%d %b, %H:%M")
         self.details.set_text(f"{wallpaper.width:,} × {wallpaper.height:,}\n{wallpaper.quality.title()} image · {wallpaper.license}\nSaved until {expires}")
-        if wallpaper.source == "bing":
+        if wallpaper.source == "local":
+            source_label = "Local image"
+        elif wallpaper.source == "bing":
             source_label = "View on Bing ↗"
         elif wallpaper.source == "firefox":
             source_label = "View on Commons ↗" if "commons" in (wallpaper.description_url or "") else "View on Firefox ↗"
@@ -460,7 +495,10 @@ class WallpaperWindow(Gtk.ApplicationWindow):
 
     def _ready(self, snapshot: Snapshot) -> None:
         self._show_snapshot(snapshot)
-        self._busy(False, snapshot.warning or f"{len(snapshot.queue)}/7 wallpapers ready. Select a thumbnail to preview.",
+        message = (f"{len(snapshot.queue)}/7 imported wallpapers ready. Import landscape images from your computer."
+                   if self.library.source == "local" else
+                   f"{len(snapshot.queue)}/7 wallpapers ready. Select a thumbnail to preview.")
+        self._busy(False, snapshot.warning or message,
                    bool(snapshot.warning))
 
     def _apply(self, _button: Gtk.Button) -> None:
@@ -479,33 +517,191 @@ class WallpaperWindow(Gtk.ApplicationWindow):
         def complete(snapshot: Snapshot) -> None:
             self._ready(snapshot)
             if not snapshot.warning:
-                self.status.set_text("Wallpaper applied. Seven unused wallpapers are ready in your queue.")
+                self.status.set_text(f"Wallpaper applied. {len(snapshot.queue)}/7 unused wallpapers ready."
+                                     + (" Import more local images to refill." if self.library.source == "local" else ""))
         self._work(operation, complete)
 
     def _replace(self, _button: Gtk.Button) -> None:
         entry = self._selected()
         if self.busy or entry is None:
             return
+        if self.library.source == "local":
+            self._import_local(original=entry)
+            return
         self._busy(True, f"Finding another {entry.wallpaper.theme.lower()} image…")
 
-        def operation() -> Snapshot:
-            self.library.skip(entry.id)
-            return self.library.fill(progress=lambda message: GLib.idle_add(self._progress, message))
+        self._work(lambda: self.library.prepare_replacement(entry.id),
+                   lambda candidate: self._compare(entry, candidate))
 
-        def complete(snapshot: Snapshot) -> None:
+    def _import_local(self, original: QueueEntry | None = None) -> None:
+        if self.busy:
+            return
+        chooser = Gtk.FileChooserDialog(title="Import landscape images" if original is None else "Choose an alternative image",
+                                        transient_for=self, action=Gtk.FileChooserAction.OPEN)
+        chooser.add_buttons("Cancel", Gtk.ResponseType.CANCEL, "Import", Gtk.ResponseType.ACCEPT)
+        chooser.set_select_multiple(original is None)
+        image_filter = Gtk.FileFilter()
+        image_filter.set_name("Images (JPEG, PNG, WebP)")
+        for mime in ("image/jpeg", "image/png", "image/webp"):
+            image_filter.add_mime_type(mime)
+        chooser.add_filter(image_filter)
+        downloads = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOWNLOAD)
+        if downloads:
+            chooser.set_current_folder(downloads)
+        response = chooser.run()
+        paths = [Path(name) for name in chooser.get_filenames()] if response == Gtk.ResponseType.ACCEPT else []
+        chooser.destroy()
+        if not paths:
+            return
+        self._busy(True, "Validating and importing landscape images…")
+        if original is not None:
+            self._work(lambda: self.library.import_local(paths[0], original=original.id),
+                       lambda candidate: self._compare(original, candidate))
+            return
+        def operation():
+            errors = []
+            count = 0
+            for path in paths:
+                try:
+                    self.library.import_local(path)
+                    count += 1
+                except Exception as exc:
+                    errors.append(f"{path.name}: {exc}")
+            return self.library.snapshot(), count, errors
+        def complete(result):
+            snapshot, count, errors = result
             self._ready(snapshot)
-            replacement = next((item for item in snapshot.queue
-                                if item.wallpaper.theme == entry.wallpaper.theme), None)
-            if replacement is not None:
-                self._select(replacement.id)
-
+            self.status.set_text(f"Imported {count} image(s)." + (" Some files could not be imported." if errors else ""))
+            if errors:
+                dialog = Gtk.MessageDialog(transient_for=self, modal=True, message_type=Gtk.MessageType.WARNING,
+                                           buttons=Gtk.ButtonsType.CLOSE, text="Some images could not be imported")
+                dialog.format_secondary_text("\n".join(errors))
+                dialog.connect("response", lambda widget, _: widget.destroy())
+                dialog.show_all()
         self._work(operation, complete)
+
+    def _open_local(self, path) -> None:
+        try:
+            Gio.AppInfo.launch_default_for_uri(path.as_uri(), self.get_display().get_app_launch_context())
+        except GLib.Error as exc:
+            self.status.set_text(f"Could not open saved wallpapers: {exc.message}")
+
+    def _saved_wallpapers(self, _button) -> None:
+        dialog = Gtk.Dialog(title="Saved wallpapers", transient_for=self, modal=True)
+        dialog.set_default_size(850, 580)
+        dialog.add_button("Open folder", Gtk.ResponseType.APPLY)
+        dialog.add_button("Close", Gtk.ResponseType.CLOSE)
+        content = dialog.get_content_area()
+        content.set_border_width(16)
+        content.set_spacing(12)
+        entries = self.library.saved_images()
+        content.pack_start(label(f"{len(entries)} saved images · Includes used and replaced wallpapers", "photo-title"), False, False, 0)
+        content.pack_start(label("Files expire 10 days after download. Your current wallpaper stays protected.", "muted", True), False, False, 0)
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        grid = Gtk.FlowBox()
+        grid.set_valign(Gtk.Align.START)
+        grid.set_selection_mode(Gtk.SelectionMode.NONE)
+        grid.set_max_children_per_line(3)
+        grid.set_min_children_per_line(1)
+        grid.set_row_spacing(12)
+        grid.set_column_spacing(12)
+        scroll.add(grid)
+        content.pack_start(scroll, True, True, 0)
+        alive = [True]
+        dialog.connect("destroy", lambda *_: alive.__setitem__(0, False))
+        for entry in entries:
+            button = Gtk.Button()
+            box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            preview = ImagePreview(thumbnail=True)
+            preview.set_size_request(200, 120)
+            box.pack_start(preview, False, False, 0)
+            caption = label(entry.wallpaper.title)
+            caption.set_max_width_chars(26)
+            caption.set_ellipsize(Pango.EllipsizeMode.END)
+            box.pack_start(caption, False, False, 0)
+            expiry = datetime.fromtimestamp(entry.expires_at).strftime("%d %b, %H:%M")
+            box.pack_start(label(f"{entry.wallpaper.source.title()} · Expires {expiry}", "muted"), False, False, 0)
+            button.add(box)
+            button.set_tooltip_text(entry.wallpaper.title + "\nOpen full image")
+            button.connect("clicked", lambda _, path=entry.wallpaper.path: self._open_local(path))
+            grid.add(button)
+            def decoded(pixbuf, error, widget=preview):
+                if alive[0] and not self.closed:
+                    widget.set_image(pixbuf)
+                    if error:
+                        widget.set_tooltip_text(error)
+            self.preview_loader.load(entry.wallpaper.path, 400, 240, decoded)
+        if not entries:
+            grid.add(label("Your downloaded wallpapers will appear here.", "muted"))
+        def response(widget, response_id):
+            if response_id == Gtk.ResponseType.APPLY:
+                self._open_local(self.library.images_dir)
+            else:
+                widget.destroy()
+        dialog.connect("response", response)
+        dialog.show_all()
+
+    def _compare(self, original: QueueEntry, candidate: QueueEntry) -> None:
+        dialog = Gtk.Dialog(title="Choose your wallpaper", transient_for=self, modal=True)
+        dialog.set_default_size(960, 550)
+        dialog.add_button("Keep selected", Gtk.ResponseType.CANCEL)
+        keep_new = dialog.add_button("Use new in queue", Gtk.ResponseType.ACCEPT)
+        keep_new.get_style_context().add_class("suggested-action")
+        dialog.set_default_response(Gtk.ResponseType.CANCEL)
+        content = dialog.get_content_area()
+        content.set_border_width(16)
+        content.set_spacing(12)
+        content.pack_start(label("Choose which image stays in your queue", "photo-title"), False, False, 0)
+        content.pack_start(label("Both remain in Saved wallpapers until their original expiry. Your desktop stays unchanged.", "muted", True), False, False, 0)
+        columns = Gtk.Box(spacing=16, homogeneous=True)
+        content.pack_start(columns, True, True, 0)
+        alive = [True]
+        dialog.connect("destroy", lambda *_: alive.__setitem__(0, False))
+        for title, entry in (("SELECTED", original), ("NEW ALTERNATIVE", candidate)):
+            box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+            box.pack_start(label(title, "eyebrow"), False, False, 0)
+            preview = ImagePreview()
+            box.pack_start(preview, True, True, 0)
+            caption = label(entry.wallpaper.title, "photo-title", True)
+            caption.set_max_width_chars(36)
+            caption.set_lines(2)
+            caption.set_ellipsize(Pango.EllipsizeMode.END)
+            box.pack_start(caption, False, False, 0)
+            credit = label(entry.wallpaper.photographer, "muted", True)
+            credit.set_max_width_chars(36)
+            credit.set_lines(2)
+            credit.set_ellipsize(Pango.EllipsizeMode.END)
+            box.pack_start(credit, False, False, 0)
+            columns.pack_start(box, True, True, 0)
+            def decoded(pixbuf, error, widget=preview):
+                if alive[0] and not self.closed:
+                    widget.set_image(pixbuf)
+                    if error:
+                        widget.set_tooltip_text(error)
+            self.preview_loader.load(entry.wallpaper.path, 1200, 800, decoded)
+        def response(widget, response_id):
+            widget.destroy()
+            keep = response_id == Gtk.ResponseType.ACCEPT
+            def operation():
+                self.library.choose_replacement(original.id, candidate.id, keep_new=keep)
+                return self.library.snapshot()
+            def complete(snapshot):
+                self.selected_id = candidate.id if keep else original.id
+                self._ready(snapshot)
+                self.status.set_text("Choice saved. Both images remain in Saved wallpapers until expiry.")
+            self._work(operation, complete)
+        dialog.connect("response", response)
+        self.status.set_text("Compare the two images and choose which to keep.")
+        dialog.show_all()
 
 
 class WallpaperApplication(Gtk.Application):
     def __init__(self, *, featured: bool = False, force: bool = False) -> None:
         GLib.set_application_name("Daily Walls")
-        super().__init__(application_id="io.github.wikiwallpaper.App", flags=Gio.ApplicationFlags.FLAGS_NONE)
+        Gdk.set_program_class(APPLICATION_ID)
+        Gtk.Window.set_default_icon_name("daily-walls")
+        super().__init__(application_id=APPLICATION_ID, flags=Gio.ApplicationFlags.FLAGS_NONE)
 
     def do_activate(self) -> None:
         window = self.get_active_window()

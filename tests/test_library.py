@@ -161,6 +161,72 @@ class LibraryTests(unittest.TestCase):
         self.assertNotIn('legacy-id', {entry.id for entry in result.queue})
         self.assertTrue(wallpaper.path.exists())
 
+    def test_comparison_keeps_original_until_choice_and_retains_both(self):
+        before = self.library.fill(fetcher=self.fetcher)
+        chosen = before.queue[0]
+        self.now += 60
+        alternative = self.library.prepare_replacement(chosen.id, fetcher=self.fetcher)
+        self.assertEqual(self.library.snapshot().queue, before.queue)
+        self.assertIn(alternative.id, {entry.id for entry in self.library.saved_images()})
+        self.library.choose_replacement(chosen.id, alternative.id, keep_new=True)
+        after = self.library.snapshot()
+        self.assertEqual(len(after.queue), 7)
+        self.assertIn(alternative.id, {entry.id for entry in after.queue})
+        self.assertNotIn(chosen.id, {entry.id for entry in after.queue})
+        self.assertTrue(chosen.wallpaper.path.exists())
+        saved = {entry.id: entry for entry in self.library.saved_images()}
+        self.assertEqual(saved[chosen.id].saved_at, chosen.saved_at)
+        self.now = chosen.expires_at
+        self.library.cleanup()
+        self.assertFalse(chosen.wallpaper.path.exists())
+        self.assertTrue(alternative.wallpaper.path.exists())
+        self.now = alternative.expires_at
+        self.library.cleanup()
+        self.assertFalse(alternative.wallpaper.path.exists())
+
+    def test_comparison_cancel_keeps_queue_and_alternative_file(self):
+        before = self.library.fill(fetcher=self.fetcher)
+        chosen = before.queue[0]
+        alternative = self.library.prepare_replacement(chosen.id, fetcher=self.fetcher)
+        self.library.choose_replacement(chosen.id, alternative.id, keep_new=False)
+        self.assertEqual(self.library.snapshot().queue, before.queue)
+        self.assertTrue(alternative.wallpaper.path.exists())
+        with self.assertRaises(LibraryError):
+            self.library.choose_replacement(chosen.id, alternative.id, keep_new=True)
+
+    def test_failed_comparison_preserves_queue(self):
+        before = self.library.fill(fetcher=self.fetcher)
+        with self.assertRaises(FetchError):
+            self.library.prepare_replacement(before.queue[0].id,
+                fetcher=FakeFetcher(self.library.images_dir, fail_after=0))
+        self.assertEqual(self.library.snapshot().queue, before.queue)
+
+    def test_comparison_rejects_stale_original(self):
+        before = self.library.fill(fetcher=self.fetcher)
+        chosen = before.queue[0]
+        alternative = self.library.prepare_replacement(chosen.id, fetcher=self.fetcher)
+        self.library.skip(chosen.id)
+        with self.assertRaises(LibraryError):
+            self.library.choose_replacement(chosen.id, alternative.id, keep_new=True)
+        self.assertNotIn(alternative.id, {entry.id for entry in self.library.snapshot().queue})
+        self.assertTrue(alternative.wallpaper.path.exists())
+
+    def test_unfinished_comparison_survives_restart_without_changing_queue(self):
+        before = self.library.fill(fetcher=self.fetcher)
+        chosen = before.queue[0]
+        alternative = self.library.prepare_replacement(chosen.id, fetcher=self.fetcher)
+        restarted = WallpaperLibrary(self.root / 'data', self.root / 'cache', clock=lambda: self.now)
+        self.assertEqual(restarted.fill(fetcher=self.fetcher).queue, before.queue)
+        self.assertIn(alternative.id, {entry.id for entry in restarted.saved_images()})
+
+    def test_comparison_cannot_restore_expired_image(self):
+        chosen = self.library.fill(fetcher=self.fetcher).queue[0]
+        alternative = self.library.prepare_replacement(chosen.id, fetcher=self.fetcher)
+        self.now = alternative.expires_at
+        with self.assertRaises(LibraryError):
+            self.library.choose_replacement(chosen.id, alternative.id, keep_new=True)
+        self.assertFalse(self.library.snapshot().queue)
+
 
 class CategoryTests(unittest.TestCase):
     def test_unrelated_categories_and_low_quality_do_not_enter_candidates(self):

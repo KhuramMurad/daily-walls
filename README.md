@@ -17,13 +17,13 @@ Download the `.deb` or `.rpm` from [GitHub Releases](https://github.com/KhuramMu
 Debian/Ubuntu (Python 3.10 or newer):
 
 ```sh
-sudo apt install ./daily-walls_1.0.1_all.deb
+sudo apt install ./daily-walls_1.1.2_all.deb
 ```
 
 Fedora (Python 3.10 or newer):
 
 ```sh
-sudo dnf install ./daily-walls-1.0.1-1.noarch.rpm
+sudo dnf install ./daily-walls-1.1.2-1.noarch.rpm
 ```
 
 Open **Daily Walls** from the application menu, or run `daily-walls --gui`.
@@ -54,6 +54,7 @@ or Previous / Next, to preview a saved image. **Set as wallpaper** applies it,
 marks it used, and downloads a new, unique image to refill its slot. Browsing
 previews does not consume the queue. Previously used images cannot be applied
 again through the queue. Refill queue retries missing slots after a network error.
+The local queue is filled manually using **Import images**.
 
 Commons images must be landscape orientation (`width > height`) and at least **3840 × 2160**.
 They must also have a Commons **Featured** or **Quality image** assessment.
@@ -78,8 +79,15 @@ coverings in Commons' “Wallpapers” category. General POTD and unrelated feat
 images are no longer used by the app or CLI. Landscape means horizontal
 orientation. The current selection profile favours scenic landscapes and sky/space
 imagery, rather than wildlife. Artistic appeal is subjective; **Find another**
-replaces a preview without changing the desktop. Replaced files stay saved until
-their normal ten-day expiry and remain in the no-repeat history.
+downloads an alternative and shows it beside the selected image. Choose **Keep
+selected** or **Use new in queue**; the desktop changes only when you later click
+**Set as wallpaper**. Closing the comparison keeps the selected image. A failed
+download leaves the queue unchanged. Both images stay saved until their original
+ten-day expiry and remain in the no-repeat history.
+
+Open **Saved wallpapers** in the header to browse all retained images across
+sources, including used images and alternatives you did not choose. Click an image
+to open it in your image viewer, or use **Open folder** to access the downloaded files.
 
 The responsive main window adapts to the available monitor area. A large preview
 and a compact details panel keep the queue and action buttons visible.
@@ -146,7 +154,7 @@ systemctl --user disable --now wiki-wallpaper-maintenance.timer
 - Optional contact/User-Agent override: `~/.config/wiki-wallpaper/user-agent`
   (`$XDG_CONFIG_HOME` is respected)
 - User timer/service: `~/.config/systemd/user/wiki-wallpaper-maintenance.*`
-- Application launcher: `~/.local/share/applications/io.github.wikiwallpaper.App.desktop`
+- Application launcher: `/usr/share/applications/io.github.KhuramMurad.daily-walls.desktop`
 
 ```sh
 /usr/bin/python3 main.py --notify      # Apply an unused wallpaper and refill
@@ -187,13 +195,32 @@ concurrent writers, expiry boundaries, deletion notices, active-wallpaper
 protection, and restricting deletion to app-owned paths. Expiry tests use a
 simulated clock and temporary files, not your desktop or real saved images.
 
-### Wallpaper sources: Commons, Bing, and Firefox
+### Wallpaper sources: Commons, Bing, Firefox, and local images
 
 Use the source dropdown at the top of the app to choose **Firefox · Picture of the day**,
 **Bing · Daily wallpapers**, or **Commons · Premium scenery**. Each source keeps its own
 seven-image queue; switching sources preserves saved images. The selected source is remembered
 and used by scheduled refills. CLI: `python3 main.py --source firefox --maintain`
 (download only), or `--source firefox` to apply an image.
+
+### Locally saved wallpapers
+
+Select **Locally saved wallpapers**, then **Import images…** to add images from
+any folder or source to a separate queue of up to seven wallpapers. JPEG, PNG,
+and WebP files must fully decode, be landscape (`width > height`), and measure
+at least **1920 × 1080**. Images keep their original proportions. Files larger
+than 50 MB and previously saved images are rejected.
+
+Imports copy files into managed storage without changing the original files.
+Managed copies expire ten days after import, with current-wallpaper protection.
+**Compare imported image…** lets you compare an alternative before replacing a
+queue image. Import more images after applying one to refill the queue; this
+category does not download images automatically. `--source local --maintain`
+performs cleanup only.
+
+Existing imports from the former Unsplash category appear here automatically,
+with their saved dates, history, and expiry preserved. Imported files do not
+supply verified photographer or license metadata; refer to their original source.
 
 ### Firefox picture of the day wallpapers
 

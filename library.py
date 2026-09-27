@@ -11,13 +11,14 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+import tempfile
 import time
 from typing import Any, Callable, Iterator
 from urllib.parse import unquote, urlsplit, urlunsplit
 
 from fetcher import FetchError, Fetcher, Wallpaper, WALLPAPER_THEMES, configured_user_agent
 from bing import BingFetcher, bing_identity
-from firefox import FirefoxFetcher, firefox_identity
+from firefox import FirefoxFetcher, firefox_identity, verified_dimensions
 from notifier import notify_removal
 from setter import set_wallpaper
 
@@ -93,6 +94,8 @@ class WallpaperLibrary:
                 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS events (
                     id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp REAL NOT NULL, message TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS replacements (
+                    candidate TEXT PRIMARY KEY, original TEXT NOT NULL);
             ''')
             columns = {row[1] for row in db.execute("PRAGMA table_info(images)")}
             if "archived_at" not in columns:
@@ -120,6 +123,11 @@ class WallpaperLibrary:
     @staticmethod
     def _entry(row: sqlite3.Row) -> QueueEntry:
         value = json.loads(row["wallpaper"])
+        # Version 1.1.0 called manual imports "unsplash". Normalize on read so
+        # existing files, timestamps, IDs, and duplicate history stay intact.
+        if value.get("source") == "unsplash":
+            value.update(source="local", theme="Local wallpapers",
+                         photographer="Imported from your computer", description_url="")
         value["path"] = Path(value["path"])
         return QueueEntry(row["id"], Wallpaper(**value), row["saved_at"], row["applied_at"])
 
@@ -131,10 +139,12 @@ class WallpaperLibrary:
     def source(self) -> str:
         with self._db() as db:
             row = db.execute("SELECT value FROM settings WHERE key='source'").fetchone()
-        return row[0] if row and row[0] in {"commons", "bing", "firefox"} else "commons"
+        if row and row[0] == "unsplash":
+            return "local"
+        return row[0] if row and row[0] in {"commons", "bing", "firefox", "local"} else "commons"
 
     def select_source(self, source: str) -> None:
-        if source not in {"commons", "bing", "firefox"}:
+        if source not in {"commons", "bing", "firefox", "local"}:
             raise ValueError("Unknown wallpaper source")
         with self._lock(), self._db() as db:
             db.execute("INSERT OR REPLACE INTO settings VALUES ('source', ?)", (source,))
@@ -148,11 +158,13 @@ class WallpaperLibrary:
         present = [entry for entry in entries if entry.wallpaper.path.is_file()]
         archived = {row["id"] for row in rows if row["archived_at"] is not None}
         def _match_source(entry_source: str) -> bool:
+            if source == "local":
+                return entry_source == "local"
             if source == "bing":
                 return entry_source == "bing"
             if source == "firefox":
                 return entry_source == "firefox"
-            return entry_source not in {"bing", "firefox"}
+            return entry_source not in {"bing", "firefox", "local"}
         queue = tuple(sorted((entry for entry in present if entry.applied_at is None
                              and _match_source(entry.wallpaper.source)
                              and entry.expires_at > self.clock() and entry.id not in archived),
@@ -169,12 +181,15 @@ class WallpaperLibrary:
             db.executemany("INSERT OR IGNORE INTO seen VALUES (?)", [(key,) for key in keys])
 
     def _store(self, wallpaper: Wallpaper, content: str, keys: set[str],
-               saved_at: float, applied_at: float | None = None) -> None:
+               saved_at: float, applied_at: float | None = None, *, original: str | None = None) -> None:
         serialized = json.dumps({**asdict(wallpaper), "path": str(wallpaper.path)})
         with self._db() as db:
             db.execute("INSERT OR IGNORE INTO images(id, wallpaper, saved_at, applied_at, removed_at) VALUES (?, ?, ?, ?, NULL)",
                        (content, serialized, saved_at, applied_at))
             db.executemany("INSERT OR IGNORE INTO seen VALUES (?)", [(key,) for key in keys])
+            if original is not None:
+                db.execute("UPDATE images SET archived_at=? WHERE id=?", (saved_at, content))
+                db.execute("INSERT INTO replacements VALUES (?, ?)", (content, original))
 
     def _import_legacy(self) -> None:
         with self._db() as db:
@@ -266,6 +281,8 @@ class WallpaperLibrary:
         with self._lock():
             self._import_legacy()
             self._cleanup()
+            if self.source == "local":
+                return self.snapshot()
             if self.source == "bing":
                 return self._fill_bing(report, fetcher)
             if self.source == "firefox":
@@ -277,7 +294,7 @@ class WallpaperLibrary:
                 occupied: set[str] = set()
                 for row in rows:
                     wallpaper = self._entry(row).wallpaper
-                    if wallpaper.source in {"bing", "firefox"}:
+                    if wallpaper.source in {"bing", "firefox", "local"}:
                         continue
                     theme = wallpaper.theme
                     if (theme not in WALLPAPER_THEMES or theme in occupied
@@ -350,7 +367,7 @@ class WallpaperLibrary:
         return self.snapshot(warning)
 
     def _accept_candidate(self, fetcher: Fetcher, info: dict[str, Any], theme: str,
-                          report: Callable[[str], None], pending: int) -> bool:
+                          report: Callable[[str], None], pending: int, *, original: str | None = None) -> bool:
         keys = identities(info["title"], info["url"], info.get("sha1", ""))
         if self._known(keys):
             return False
@@ -370,8 +387,101 @@ class WallpaperLibrary:
             if self._safe_path(wallpaper.path) and wallpaper.path != old_path:
                 wallpaper.path.unlink(missing_ok=True)
             return False
-        self._store(wallpaper, content, keys, self.clock())
+        self._store(wallpaper, content, keys, self.clock(), original=original)
         return True
+
+    def saved_images(self) -> tuple[QueueEntry, ...]:
+        """All locally retained images, including used and replaced previews."""
+        with self._db() as db:
+            rows = db.execute("SELECT * FROM images WHERE removed_at IS NULL ORDER BY saved_at DESC, id").fetchall()
+        return tuple(self._entry(row) for row in rows if self._entry(row).wallpaper.path.is_file())
+
+    def import_local(self, path: Path, *, original: str | None = None) -> QueueEntry:
+        """Copy a user-selected image into managed storage, never modify the original."""
+        with self._lock():
+            if self.source != "local":
+                raise LibraryError("Select Locally saved wallpapers before importing images.")
+            queue = self.snapshot().queue
+            if original is not None and original not in {entry.id for entry in queue}:
+                raise LibraryError("The selected image is no longer in the queue.")
+            if original is None and len(queue) >= QUEUE_SIZE:
+                raise LibraryError("The local queue is full. Apply an image or compare a replacement first.")
+            temporary = None
+            try:
+                if path.stat().st_size > 50 * 1024 * 1024:
+                    raise LibraryError("Choose an image smaller than 50 MB.")
+                with path.open('rb') as source, tempfile.NamedTemporaryFile(dir=self.images_dir, delete=False) as target:
+                    temporary = Path(target.name)
+                    size = 0
+                    while block := source.read(1024 * 1024):
+                        size += len(block)
+                        if size > 50 * 1024 * 1024:
+                            raise LibraryError("Choose an image smaller than 50 MB.")
+                        target.write(block)
+                width, height = verified_dimensions(temporary, source="imported")
+                if width <= height or width < 1920 or height < 1080:
+                    raise LibraryError("Choose a landscape image at least 1920 × 1080 pixels.")
+                content = _digest(temporary)
+                keys = {"sha256:" + content}
+                if self._known(keys):
+                    raise LibraryError("This image has already been imported or downloaded.")
+                from PIL import Image
+                with Image.open(temporary) as image:
+                    suffix = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp"}[image.format]
+                destination = self.images_dir / (content + suffix)
+                temporary.replace(destination)
+                temporary = destination
+                wallpaper = Wallpaper(destination, path.stem, "Imported from your computer", "See original photo", "",
+                                      "", "", width, height, "local",
+                                      theme="Local wallpapers", quality="Landscape")
+                saved = self.clock()
+                self._store(wallpaper, content, keys, saved, original=original)
+                temporary = None
+                return QueueEntry(content, wallpaper, saved, None)
+            finally:
+                if temporary is not None:
+                    temporary.unlink(missing_ok=True)
+
+    def prepare_replacement(self, image_id: str, fetcher: Fetcher | None = None) -> QueueEntry:
+        """Save an alternative outside the queue; leave the original untouched."""
+        with self._lock():
+            original = next((entry for entry in self.snapshot().queue if entry.id == image_id), None)
+            if original is None:
+                raise LibraryError("This image is no longer in the queue. Refresh the queue.")
+            source = original.wallpaper.source
+            if source == "local":
+                raise LibraryError("Import a local image to compare it with your selection.")
+            factory = {"bing": BingFetcher, "firefox": FirefoxFetcher}.get(source, Fetcher)
+            fetcher = fetcher or factory(configured_user_agent(), self.images_dir)
+            themes = None if source in {"bing", "firefox"} else (original.wallpaper.theme,)
+            for info in fetcher.wallpaper_candidates(themes=themes):
+                theme = info.get("theme", original.wallpaper.theme)
+                if self._accept_candidate(fetcher, info, theme, lambda _: None, 0, original=image_id):
+                    with self._db() as db:
+                        row = db.execute("SELECT i.* FROM images i JOIN replacements r ON i.id=r.candidate "
+                                         "WHERE r.original=? ORDER BY i.saved_at DESC, i.rowid DESC LIMIT 1",
+                                         (image_id,)).fetchone()
+                    return self._entry(row)
+            raise LibraryError("No unseen alternative is available right now. Your selected image is unchanged.")
+
+    def choose_replacement(self, original_id: str, candidate_id: str, *, keep_new: bool) -> None:
+        """Atomically swap only after a choice; retain both files and save dates."""
+        with self._lock(), self._db() as db:
+            proposal = db.execute("SELECT 1 FROM replacements WHERE original=? AND candidate=?",
+                                  (original_id, candidate_id)).fetchone()
+            if proposal is None:
+                raise LibraryError("This comparison is no longer available.")
+            if keep_new:
+                old = db.execute("SELECT * FROM images WHERE id=? AND removed_at IS NULL "
+                                 "AND archived_at IS NULL AND applied_at IS NULL", (original_id,)).fetchone()
+                new = db.execute("SELECT * FROM images WHERE id=? AND removed_at IS NULL "
+                                 "AND archived_at IS NOT NULL AND applied_at IS NULL", (candidate_id,)).fetchone()
+                if any(row is None or self._entry(row).expires_at <= self.clock()
+                       or not self._entry(row).wallpaper.path.is_file() for row in (old, new)):
+                    raise LibraryError("The queue changed or an image expired. Refresh and try again.")
+                db.execute("UPDATE images SET archived_at=? WHERE id=?", (self.clock(), original_id))
+                db.execute("UPDATE images SET archived_at=NULL WHERE id=?", (candidate_id,))
+            db.execute("DELETE FROM replacements WHERE candidate=?", (candidate_id,))
 
     def apply(self, image_id: str, setter: Callable[[Path], str] = set_wallpaper) -> Wallpaper:
         with self._lock():

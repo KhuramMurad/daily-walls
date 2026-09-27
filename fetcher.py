@@ -22,7 +22,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode, urlsplit
 from urllib.request import Request, urlopen
 
-DEFAULT_USER_AGENT = "daily-walls/1.0.1 (https://github.com/KhuramMurad/daily-walls)"
+DEFAULT_USER_AGENT = "daily-walls/1.1.2 (https://github.com/KhuramMurad/daily-walls)"
 
 LOG = logging.getLogger(__name__)
 API_URL = "https://commons.wikimedia.org/w/api.php"
