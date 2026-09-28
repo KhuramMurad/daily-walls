@@ -4,10 +4,10 @@ Linux and Windows share the `main` branch. Windows runtime modules, packaging,
 configuration, and Windows-specific tests live in `windows/`. Windows builds
 write only to `dist/windows/` and `build/windows/`, independently of the Linux
 DEB/RPM packaging. Preview version:
-**1.2.0-alpha.1**, targeting Windows 11 x64.
+**1.2.0-alpha.2**, targeting Windows 11 x64.
 
-[Download the portable ZIP](https://github.com/KhuramMurad/daily-walls/releases/download/v1.2.0-alpha.1/daily-walls-1.2.0-alpha.1-windows-x64.zip) ·
-[Release notes and SHA256SUMS](https://github.com/KhuramMurad/daily-walls/releases/tag/v1.2.0-alpha.1)
+[Download the portable ZIP](https://github.com/KhuramMurad/daily-walls/releases/download/v1.2.0-alpha.2/daily-walls-1.2.0-alpha.2-windows-x64.zip) ·
+[Release notes and SHA256SUMS](https://github.com/KhuramMurad/daily-walls/releases/tag/v1.2.0-alpha.2)
 
 Both bundled executables passed the packaged GUI/runtime checks on Windows Server
 2022 with MSYS2 removed from PATH. This unsigned preview still needs interactive
@@ -47,14 +47,14 @@ smoke-tests both launchers with MSYS2 removed from PATH. The packaged tests open
 the main window and saved gallery, render a preview through Cairo, and verify
 JPEG/PNG/WebP decoding, TLS trust, local imports, conversion, and file locking.
 Successful builds upload a portable ZIP and SHA256SUMS as Actions artifacts;
-public releases are published separately. This workflow does not run Linux packaging.
+successful main-branch builds also publish a versioned prerelease when that version does not already exist. Published assets are never overwritten; bump the preview version for a new package. This workflow does not run Linux packaging.
 
 Build outputs:
 
 ```text
 dist/windows/
   DailyWalls/                                  Unpacked application and scripts
-  daily-walls-1.2.0-alpha.1-windows-x64.zip      Portable preview
+  daily-walls-1.2.0-alpha.2-windows-x64.zip      Portable preview
   SHA256SUMS                                   ZIP integrity checksum
 ```
 

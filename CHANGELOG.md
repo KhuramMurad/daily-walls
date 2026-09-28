@@ -1,5 +1,14 @@
 # Release history
 
+## 1.2.0-alpha.2 — Windows preview — 2026-09-28
+
+- Fix wallpaper COM activation to use the local server, resolving HRESULT 0x80040154 when reading or applying wallpapers.
+- Add regression coverage for out-of-process desktop activation.
+- Verify reading and reapplying the current wallpaper on Windows 11, preserving the selected image.
+- Rebuild the portable Windows package and SHA256 checksum. This preview remains unsigned; Windows application-control policy may block its native dependencies.
+
+Linux 1.1.3 remains the stable Linux release.
+
 ## 1.2.0-alpha.1 — Windows preview — 2026-09-27
 
 - First portable Windows x64 package, with GUI and CLI executables and bundled GTK/Python runtime.

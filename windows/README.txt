@@ -1,4 +1,4 @@
-Daily Walls for Windows - 1.2.0-alpha.1
+Daily Walls for Windows - 1.2.0-alpha.2
 
 Extract this entire folder before running DailyWalls.exe. Keep _internal beside it.
 Use DailyWallsCLI.exe for terminal commands. Python and MSYS2 are not required on

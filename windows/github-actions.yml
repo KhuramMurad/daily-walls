@@ -60,3 +60,38 @@ jobs:
             dist/windows/SHA256SUMS
           if-no-files-found: error
           retention-days: 14
+
+  publish:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: windows-2022
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Publish validated Windows preview
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          gh run download $env:RUN_ID --name daily-walls-windows-x64-preview --dir release
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot download validated package' }
+          $archives = @(Get-ChildItem release -Filter 'daily-walls-*-windows-x64.zip' -Recurse)
+          if ($archives.Count -ne 1) { throw 'Expected exactly one Windows archive' }
+          $archive = $archives[0]
+          $version = $archive.Name -replace '^daily-walls-', '' -replace '-windows-x64.zip$', ''
+          $checksums = Join-Path $archive.DirectoryName 'SHA256SUMS'
+          $expected = ((Get-Content $checksums -Raw).Trim() -split '\s+')[0]
+          if ((Get-FileHash $archive.FullName -Algorithm SHA256).Hash -ne $expected) {
+            throw 'Windows archive checksum mismatch'
+          }
+          gh release view "v$version" *> $null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release v$version already exists; keeping its published assets."
+            exit 0
+          }
+          gh release create "v$version" $archive.FullName $checksums --target $env:COMMIT_SHA --title "Daily Walls $version - Windows preview" --prerelease --generate-notes
+          if ($LASTEXITCODE -ne 0) { throw 'Windows release publication failed' }

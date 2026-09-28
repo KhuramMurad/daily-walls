@@ -15,7 +15,7 @@ Commons, Bing, Firefox Picture of the Day, and images imported from your compute
 | --- | --- | --- |
 | Debian / Ubuntu | Stable Linux 1.1.3 | [Download DEB](https://github.com/KhuramMurad/daily-walls/releases/download/v1.1.3/daily-walls_1.1.3_all.deb) |
 | Fedora | Stable Linux 1.1.3 | [Download RPM](https://github.com/KhuramMurad/daily-walls/releases/download/v1.1.3/daily-walls-1.1.3-1.noarch.rpm) |
-| Windows 11 x64 | Preview 1.2.0-alpha.1 | [Download portable ZIP](https://github.com/KhuramMurad/daily-walls/releases/download/v1.2.0-alpha.1/daily-walls-1.2.0-alpha.1-windows-x64.zip) |
+| Windows 11 x64 | Preview 1.2.0-alpha.2 | [Download portable ZIP](https://github.com/KhuramMurad/daily-walls/releases/download/v1.2.0-alpha.2/daily-walls-1.2.0-alpha.2-windows-x64.zip) |
 
 Linux downloads: [release notes and all assets](https://github.com/KhuramMurad/daily-walls/releases/tag/v1.1.3)
 and [SHA-256 checksums](https://github.com/KhuramMurad/daily-walls/releases/download/v1.1.3/SHA256SUMS).
@@ -23,7 +23,7 @@ Older packages remain on the [Releases page](https://github.com/KhuramMurad/dail
 
 Installers are published as **GitHub Release assets**, not committed binaries.
 GitHub's automatically generated source ZIP/TAR archives are source code, not installers.
-Windows has a [separate preview release](https://github.com/KhuramMurad/daily-walls/releases/tag/v1.2.0-alpha.1)
+Windows has a [separate preview release](https://github.com/KhuramMurad/daily-walls/releases/tag/v1.2.0-alpha.2)
 with its own checksum. Extract the entire ZIP and open `DailyWalls.exe`; keep
 `_internal` beside it. Python and MSYS2 are not required. See the
 [Windows guide](windows/README.md) for maintenance and known limitations.

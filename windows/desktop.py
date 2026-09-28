@@ -13,6 +13,7 @@ from uuid import UUID
 
 APP_ID = 'KhuramMurad.DailyWalls.Windows'
 HRESULT = ctypes.c_int32
+CLSCTX_LOCAL_SERVER = 4
 CLSID_DESKTOP_WALLPAPER = 'C2CF3110-460E-4FC1-B9D0-8A1C0C9CC4BD'
 IID_DESKTOP_WALLPAPER = 'B92B56A9-8B55-4E14-9A89-0199BBB6F93B'
 
@@ -91,7 +92,9 @@ def desktop_session():
     try:
         pointer = ctypes.c_void_p()
         clsid, iid = GUID.parse(CLSID_DESKTOP_WALLPAPER), GUID.parse(IID_DESKTOP_WALLPAPER)
-        _check(ole.CoCreateInstance(ctypes.byref(clsid), None, 1, ctypes.byref(iid), ctypes.byref(pointer)),
+        # DesktopWallpaper runs in a local COM server, not an in-process DLL.
+        _check(ole.CoCreateInstance(ctypes.byref(clsid), None, CLSCTX_LOCAL_SERVER,
+                                    ctypes.byref(iid), ctypes.byref(pointer)),
                'Open Windows desktop')
         desktop = DesktopWallpaper(pointer, ole)
         yield desktop

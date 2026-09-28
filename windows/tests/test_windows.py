@@ -71,6 +71,20 @@ class WindowsWallpaperTests(unittest.TestCase):
                     self.fail('Failed COM creation must not yield a desktop')
         ole.CoUninitialize.assert_called_once()
 
+    def test_com_session_activates_out_of_process_wallpaper_server(self):
+        ole = Mock()
+        ole.CoInitializeEx.return_value = 0
+        # Model Windows where DesktopWallpaper has no in-process registration.
+        ole.CoCreateInstance.side_effect = lambda clsid, outer, context, iid, pointer: (
+            0 if context == 4 else -2147221164)  # REGDB_E_CLASSNOTREG
+        with patch('windows.desktop.sys.platform', 'win32'), \
+                patch('ctypes.WinDLL', return_value=ole, create=True), \
+                patch('windows.desktop.DesktopWallpaper') as desktop:
+            with windows.desktop.desktop_session() as session:
+                self.assertIs(session, desktop.return_value)
+        desktop.return_value.close.assert_called_once()
+        ole.CoUninitialize.assert_called_once()
+
     def test_existing_com_apartment_is_not_uninitialized(self):
         ole = Mock()
         ole.CoInitializeEx.return_value = -2147417850
